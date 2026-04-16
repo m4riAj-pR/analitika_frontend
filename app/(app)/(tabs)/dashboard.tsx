@@ -3,11 +3,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, typography } from '../../../src/theme/colors';
 
-export default function RankingScreen() {
+export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Text style={styles.title}>Top</Text>
+      <Text style={styles.title}>Dashboard</Text>
     </View>
   );
 }

@@ -7,11 +7,11 @@ import { colors, palette, typography } from '../theme/colors';
 // Simple mapping from route name to icon name
 const getIconName = (routeName: string) => {
   switch (routeName) {
-    case 'index':
-      return 'grid'; // Using grid as closest to dashboard icon
-    case 'create':
+    case 'dashboard':
+      return 'grid';
+    case 'campaign':
       return 'add-circle';
-    case 'top':
+    case 'ranking':
       return 'podium';
     default:
       return 'ellipse';
@@ -20,11 +20,11 @@ const getIconName = (routeName: string) => {
 
 const getLabel = (routeName: string) => {
   switch (routeName) {
-    case 'index':
+    case 'dashboard':
       return 'Dashboard';
-    case 'create':
+    case 'campaign':
       return 'Create';
-    case 'top':
+    case 'ranking':
       return 'Top';
     default:
       return routeName;
