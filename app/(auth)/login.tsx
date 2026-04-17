@@ -37,7 +37,7 @@ export default function Login() {
             Alert.alert("Campo requerido", "Por favor ingresa tu Contraseña.");
             return;
         }
-        router.replace("/(dashboard)");
+        router.replace('/(app)/(tabs)/dashboard');
     };
 
     return (
