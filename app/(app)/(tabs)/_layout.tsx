@@ -10,6 +10,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="dashboard" />
       <Tabs.Screen name="campaign" />
       <Tabs.Screen name="ranking" />
+      <Tabs.Screen name="account" />
     </Tabs>
   );
 }

@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { authApi } from "../../src/services/api";
 import React, { useState } from "react";
 import {
     Alert,
@@ -12,6 +13,7 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -33,8 +35,9 @@ export default function Register() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [acceptedTerms, setAcceptedTerms] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    const handleRegister = () => {
+    const handleRegister = async () => {
         if (!nombres.trim()) {
             Alert.alert("Campo requerido", "Por favor ingresa tus Nombres.");
             return;
@@ -47,8 +50,20 @@ export default function Register() {
             Alert.alert("Campo requerido", "Por favor ingresa tu Correo Electrónico.");
             return;
         }
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            Alert.alert("Correo Inválido", "Por favor ingresa un correo electrónico válido.");
+            return;
+        }
+        
         if (!password.trim()) {
             Alert.alert("Campo requerido", "Por favor ingresa una Contraseña.");
+            return;
+        }
+
+        if (password.length < 8) {
+            Alert.alert("Contraseña débil", "La contraseña debe tener al menos 8 caracteres.");
             return;
         }
         if (!acceptedTerms) {
@@ -58,8 +73,25 @@ export default function Register() {
             );
             return;
         }
-        // Navegación al dashboard tras registro exitoso
-        router.replace("/(dashboard)");
+        
+        try {
+            setLoading(true);
+            await authApi.register({
+                first_name: nombres,
+                last_name: apellidos,
+                email: email.trim(),
+                password,
+                phone: "0000000000", // Valor por defecto si no hay campo de teléfono
+            });
+
+            Alert.alert("Registro Exitoso", "Tu cuenta ha sido creada correctamente.", [
+                { text: "OK", onPress: () => router.replace("/(auth)/login") }
+            ]);
+        } catch (error: any) {
+            Alert.alert("Error de registro", error.message || "Hubo un problema al crear tu cuenta.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -172,11 +204,16 @@ export default function Register() {
 
                     {/* Botón Registrarse */}
                     <TouchableOpacity
-                        style={styles.registerButton}
+                        style={[styles.registerButton, loading && { opacity: 0.7 }]}
                         activeOpacity={0.85}
                         onPress={handleRegister}
+                        disabled={loading}
                     >
-                        <Text style={styles.registerButtonText}>Registrarse</Text>
+                        {loading ? (
+                            <ActivityIndicator color={colors.textOnPrimary} />
+                        ) : (
+                            <Text style={styles.registerButtonText}>Registrarse</Text>
+                        )}
                     </TouchableOpacity>
 
                     {/* Divider */}
@@ -239,8 +276,8 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
     logoImage: {
-        width: 200,
-        height: 80,
+        width: 300,
+        height: 400,
     },
 
     backButton: {

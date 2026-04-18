@@ -13,6 +13,8 @@ const getIconName = (routeName: string) => {
       return 'add-circle';
     case 'ranking':
       return 'podium';
+    case 'account':
+      return 'person';
     default:
       return 'ellipse';
   }
@@ -26,6 +28,8 @@ const getLabel = (routeName: string) => {
       return 'Create';
     case 'ranking':
       return 'Top';
+    case 'account':
+      return 'Cuenta';
     default:
       return routeName;
   }

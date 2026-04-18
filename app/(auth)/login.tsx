@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { authApi } from "../../src/services/api";
 import React, { useState } from "react";
 import {
     Alert,
@@ -10,6 +11,7 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -27,17 +29,39 @@ export default function Login() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         if (!email.trim()) {
             Alert.alert("Campo requerido", "Por favor ingresa tu Correo Electrónico.");
             return;
         }
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            Alert.alert("Correo Inválido", "Por favor ingresa un correo electrónico válido.");
+            return;
+        }
+
         if (!password.trim()) {
             Alert.alert("Campo requerido", "Por favor ingresa tu Contraseña.");
             return;
         }
-        router.replace('/(app)/(tabs)/dashboard');
+        
+        try {
+            setLoading(true);
+            await authApi.login({
+                email: email.trim(),
+                password: password
+            });
+
+            // Si el login es exitoso
+            router.replace('/(app)/(tabs)/dashboard');
+        } catch (error: any) {
+            Alert.alert("Error de Inicio de Sesión", error.message || "Credenciales incorrectas o usuario no registrado.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -94,11 +118,16 @@ export default function Login() {
 
                 {/* Botón principal */}
                 <TouchableOpacity
-                    style={styles.loginButton}
+                    style={[styles.loginButton, loading && { opacity: 0.7 }]}
                     activeOpacity={0.85}
                     onPress={handleLogin}
+                    disabled={loading}
                 >
-                    <Text style={styles.loginButtonText}>Iniciar Sesion</Text>
+                    {loading ? (
+                        <ActivityIndicator color={colors.textOnPrimary} />
+                    ) : (
+                        <Text style={styles.loginButtonText}>Iniciar Sesion</Text>
+                    )}
                 </TouchableOpacity>
 
                 {/* Divider */}
@@ -181,8 +210,8 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
     logoImage: {
-        width: 260,
-        height: 120,
+        width: 300,
+        height: 400,
     },
 
     /* ── BOTTOM SHEET ── */
