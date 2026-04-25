@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -11,10 +13,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Modal,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { campaignsApi, trackingLinksApi } from '../../src/services/api';
 import {
   colors,
   palette,
@@ -22,7 +23,6 @@ import {
   spacing,
   typography,
 } from '../../src/theme/colors';
-import { campaignsApi, trackingLinksApi } from '../../src/services/api';
 
 // ─── Date field group (DD / MM / YYYY) ───────────────────────────────────────
 function DateGroup({
@@ -36,6 +36,9 @@ function DateGroup({
   onMm: (v: string) => void;
   onYyyy: (v: string) => void;
 }) {
+  const mmRef = useRef<TextInput>(null);
+  const yyyyRef = useRef<TextInput>(null);
+
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -45,20 +48,24 @@ function DateGroup({
           placeholder="DD"
           placeholderTextColor={palette.purple3}
           value={dd}
-          onChangeText={onDd}
+          onChangeText={(v) => { onDd(v); if (v.length === 2) mmRef.current?.focus(); }}
           keyboardType="numeric"
           maxLength={2}
+          textAlign="center"
         />
         <TextInput
+          ref={mmRef}
           style={[styles.dateInput, { flex: 1 }]}
           placeholder="MM"
           placeholderTextColor={palette.purple3}
           value={mm}
-          onChangeText={onMm}
+          onChangeText={(v) => { onMm(v); if (v.length === 2) yyyyRef.current?.focus(); }}
           keyboardType="numeric"
           maxLength={2}
+          textAlign="center"
         />
         <TextInput
+          ref={yyyyRef}
           style={[styles.dateInput, { flex: 2 }]}
           placeholder="YYYY"
           placeholderTextColor={palette.purple3}
@@ -66,13 +73,14 @@ function DateGroup({
           onChangeText={onYyyy}
           keyboardType="numeric"
           maxLength={4}
+          textAlign="center"
         />
       </View>
     </View>
   );
 }
 
-// ─── Money input ──────────────────────────────────────────────────────────────
+
 function MoneyInput({
   label, value, onChange,
 }: {
@@ -108,7 +116,7 @@ export default function CreateCampaignScreen() {
   const [description, setDescription] = useState('');
   const [canal, setCanal] = useState('');
   const [showCanalModal, setShowCanalModal] = useState(false);
-  const canales = ['Instagram', 'Facebook', 'WhatsApp', 'TikTok'];
+  const canales = ['Instagram', 'Facebook', 'WhatsApp', 'TikTok', 'Email', 'Otro'];
 
   const [startDd, setStartDd] = useState('');
   const [startMm, setStartMm] = useState('');
@@ -128,15 +136,14 @@ export default function CreateCampaignScreen() {
       Alert.alert('Campo requerido', 'Ingresa el nombre de la campaña.');
       return;
     }
-    
     try {
       setLoading(true);
       const payload = {
-        name,
-        description,
-        canal,
-        start_date: `${startYyyy || '2026'}-${startMm || '01'}-${startDd || '01'}`,
-        end_date: `${endYyyy || '2026'}-${endMm || '01'}-${endDd || '01'}`,
+        name: name.trim(),
+        description: description.trim(),
+        canal: canal || undefined,
+        start_date: `${startYyyy || '2026'}-${(startMm || '01').padStart(2, '0')}-${(startDd || '01').padStart(2, '0')}`,
+        end_date: `${endYyyy || '2026'}-${(endMm || '01').padStart(2, '0')}-${(endDd || '01').padStart(2, '0')}`,
         status: 'active' as const,
         spent: Number(budget) || 0,
         budget: Number(budget) || 0,
@@ -147,21 +154,20 @@ export default function CreateCampaignScreen() {
         await campaignsApi.update(campaignId, payload);
       } else {
         const created = await campaignsApi.create(payload);
-        // Generar link trackeable automáticamente para la nueva campaña
         if (created.id_campaign) {
-            try {
-                await trackingLinksApi.create({
-                    id_campaign: created.id_campaign,
-                    destination_url: 'https://ejemplo.com' // Destino por defecto
-                });
-            } catch (err) {
-                console.log('No se pudo crear el link trackeable automáticamente', err);
-            }
+          try {
+            await trackingLinksApi.create({
+              id_campaign: created.id_campaign,
+              destination_url: 'https://ejemplo.com',
+            });
+          } catch {
+            // silencioso
+          }
         }
       }
 
-      Alert.alert('¡Listo!', 'Campaña guardada exitosamente.', [
-        { text: "OK", onPress: () => router.back() }
+      Alert.alert('¡Listo!', `Campaña ${campaignId ? 'actualizada' : 'creada'} exitosamente.`, [
+        { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'No se pudo guardar la campaña.');
@@ -225,32 +231,41 @@ export default function CreateCampaignScreen() {
         />
 
         {/* Canal */}
-        <TouchableOpacity style={styles.selectorRow} activeOpacity={0.7} onPress={() => setShowCanalModal(true)}>
+        <TouchableOpacity
+          style={styles.selectorRow}
+          activeOpacity={0.7}
+          onPress={() => setShowCanalModal(true)}
+        >
           <Text style={[styles.selectorText, !canal && styles.placeholder]}>
             {canal || 'Canal'}
           </Text>
-          <Ionicons name="chevron-down" size={18} color={palette.purple3} />
+          <Ionicons name="chevron-forward" size={18} color={palette.purple3} />
         </TouchableOpacity>
 
         {/* Modal selector de canal */}
         <Modal visible={showCanalModal} transparent animationType="fade">
-          <TouchableOpacity 
-            style={styles.modalOverlay} 
-            activeOpacity={1} 
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
             onPress={() => setShowCanalModal(false)}
           >
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Selecciona un Canal</Text>
               {canales.map((c) => (
-                <TouchableOpacity 
-                  key={c} 
+                <TouchableOpacity
+                  key={c}
                   style={styles.modalOption}
                   onPress={() => {
                     setCanal(c);
                     setShowCanalModal(false);
                   }}
                 >
-                  <Text style={[styles.modalOptionText, canal === c && { color: colors.primary, fontWeight: typography.bold }]}>{c}</Text>
+                  <Text style={[
+                    styles.modalOptionText,
+                    canal === c && { color: colors.primary, fontWeight: typography.bold },
+                  ]}>
+                    {c}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -275,11 +290,7 @@ export default function CreateCampaignScreen() {
         <MoneyInput label="Presupuesto" value={budget} onChange={setBudget} />
 
         {/* Retorno Esperado */}
-        <MoneyInput
-          label="Retorno Esperado"
-          value={returnExpected}
-          onChange={setReturnExpected}
-        />
+        <MoneyInput label="Retorno Esperado" value={returnExpected} onChange={setReturnExpected} />
 
         {/* Generar Link Trackeable */}
         <View style={styles.fieldGroup}>
@@ -295,9 +306,11 @@ export default function CreateCampaignScreen() {
           disabled={loading}
         >
           {loading ? (
-             <ActivityIndicator color={colors.textOnPrimary} />
+            <ActivityIndicator color={colors.textOnPrimary} />
           ) : (
-             <Text style={styles.createButtonText}>Guardar Campaña</Text>
+            <Text style={styles.createButtonText}>
+              {campaignId ? 'Guardar Cambios' : 'Crear campaña'}
+            </Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -352,6 +365,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     fontSize: typography.sizeMd,
     color: colors.textPrimary,
+    // sombra sutil mejorada
+    shadowColor: palette.purple2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
   },
   textArea: {
     minHeight: 100,
@@ -367,6 +386,11 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    shadowColor: palette.purple2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
   },
   selectorText: {
     fontSize: typography.sizeMd,
@@ -396,7 +420,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     fontSize: typography.sizeMd,
     color: colors.textPrimary,
-    textAlign: 'center',
+    shadowColor: palette.purple2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
   },
 
   /* Money input */
@@ -407,6 +435,11 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    shadowColor: palette.purple2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
   },
   moneyCurrency: {
     fontSize: typography.sizeMd,
@@ -426,6 +459,11 @@ const styles = StyleSheet.create({
     height: 72,
     backgroundColor: colors.bgCard,
     borderRadius: radii.lg,
+    shadowColor: palette.purple2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
   },
 
   /* CTA */
@@ -435,6 +473,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     alignItems: 'center',
     marginTop: spacing.sm,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
   },
   createButtonText: {
     color: colors.textOnPrimary,
@@ -445,7 +488,7 @@ const styles = StyleSheet.create({
   /* Modal */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
@@ -455,6 +498,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgPage,
     borderRadius: radii.xl,
     padding: spacing.xl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 10,
   },
   modalTitle: {
     fontSize: typography.sizeXl,

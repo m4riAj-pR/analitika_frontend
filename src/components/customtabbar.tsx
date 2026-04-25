@@ -10,7 +10,7 @@ const getIconName = (routeName: string) => {
     case 'dashboard':
       return 'grid';
     case 'campaign':
-      return 'add-circle';
+      return 'megaphone';
     case 'ranking':
       return 'podium';
     case 'account':
@@ -25,7 +25,7 @@ const getLabel = (routeName: string) => {
     case 'dashboard':
       return 'Dashboard';
     case 'campaign':
-      return 'Create';
+      return 'Campañas';
     case 'ranking':
       return 'Top';
     case 'account':

@@ -97,8 +97,8 @@ export default function Login() {
                 {/* Email */}
                 <TextInput
                     style={styles.input}
-                    placeholder="Correo Electronico *"
-                    placeholderTextColor={palette.purple3}
+                    placeholder="Correo Electrónico"
+                    placeholderTextColor="rgba(156, 163, 175, 0.8)"
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -109,8 +109,8 @@ export default function Login() {
                 {/* Contraseña */}
                 <TextInput
                     style={styles.input}
-                    placeholder="Contraseña *"
-                    placeholderTextColor={palette.purple3}
+                    placeholder="Contraseña"
+                    placeholderTextColor="rgba(156, 163, 175, 0.8)"
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry

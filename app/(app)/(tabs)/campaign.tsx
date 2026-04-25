@@ -13,19 +13,19 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
     colors,
+    palette,
     radii,
     shadows,
     spacing,
     typography,
 } from '../../../src/theme/colors';
 
-import { campaignsApi } from '../../../src/services/api/campaign';
 import { useCampaigns } from '../../../src/hooks/useCampaigns';
 import { trackingLinksApi } from '../../../src/services/api/tracking';
 import { trackingStatsApi } from '../../../src/services/api/stats';
 import { useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { palette } from '../../../src/theme/colors';
+import { DEMO_TRACKING_LINKS, isDemoId } from '../../../src/data/demoCampaigns';
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function CampaignScreen() {
@@ -33,7 +33,6 @@ export default function CampaignScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const { campaigns, loading, reload } = useCampaigns();
-    const [creating, setCreating] = useState(false);
 
     // Leer id_link y registrar
     useEffect(() => {
@@ -52,18 +51,29 @@ export default function CampaignScreen() {
 
     const copyLink = async (id_campaign: number) => {
         try {
+            // Campañas de demo: usar el link local
+            if (isDemoId(id_campaign)) {
+                const demoLinks = DEMO_TRACKING_LINKS[id_campaign];
+                if (demoLinks && demoLinks.length > 0) {
+                    await Clipboard.setStringAsync(demoLinks[0].url);
+                    Alert.alert('¡Copiado!', `Link de demo copiado:\n${demoLinks[0].url}`);
+                }
+                return;
+            }
+
             const links = await trackingLinksApi.listByCampaign(id_campaign);
             if (links && links.length > 0) {
                 const trackUrl = trackingLinksApi.publicTrackUrl(links[0].id_link);
                 await Clipboard.setStringAsync(trackUrl);
-                Alert.alert("¡Copiado!", "El link trackeable ha sido copiado al portapapeles.");
+                Alert.alert('¡Copiado!', 'El link trackeable ha sido copiado al portapapeles.');
             } else {
-                Alert.alert("Sin Link", "Esta campaña aún no tiene un link trackeable generado.");
+                Alert.alert('Sin Link', 'Esta campaña aún no tiene un link trackeable generado.');
             }
-        } catch (error) {
-            Alert.alert("Error", "No se pudo copiar el link.");
+        } catch {
+            Alert.alert('Error', 'No se pudo copiar el link.');
         }
     };
+
 
     // handleCreateCampaign fue eliminado ya que "Create" es un Tab manejado por customtabbar.tsx
 
@@ -72,9 +82,25 @@ export default function CampaignScreen() {
             {/* ── HEADER ── */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Campañas</Text>
-                <TouchableOpacity style={styles.avatarBtn} activeOpacity={0.75}>
-                    <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
+                    <TouchableOpacity 
+                        style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: radii.pill,
+                            backgroundColor: colors.primary,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                        }} 
+                        activeOpacity={0.75} 
+                        onPress={() => router.push('/(app)/create')}
+                    >
+                        <Ionicons name="add" size={24} color={colors.bgPage} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.avatarBtn} activeOpacity={0.75}>
+                        <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <ScrollView

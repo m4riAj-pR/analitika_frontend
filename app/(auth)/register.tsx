@@ -14,6 +14,8 @@ import {
     TouchableOpacity,
     View,
     ActivityIndicator,
+    Dimensions,
+    Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -24,6 +26,8 @@ import {
     spacing,
     typography,
 } from "../../src/theme/colors";
+
+const { height } = Dimensions.get('window');
 
 export default function Register() {
     const insets = useSafeAreaInsets();
@@ -36,6 +40,7 @@ export default function Register() {
     const [password, setPassword] = useState("");
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [showTermsModal, setShowTermsModal] = useState(false);
 
     const handleRegister = async () => {
         if (!nombres.trim()) {
@@ -104,6 +109,15 @@ export default function Register() {
                 {/* Blob superior-izquierdo */}
                 <View style={styles.blobTopLeft} />
 
+                {/* Botón volver */}
+                <TouchableOpacity
+                    style={[styles.backButton, { top: insets.top + 10 }]}
+                    onPress={() => router.back()}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <Ionicons name="arrow-back" size={24} color={colors.primary} />
+                </TouchableOpacity>
+
                 {/* Logo */}
                 <View style={styles.logoWrapper}>
                     <Image
@@ -112,135 +126,190 @@ export default function Register() {
                         resizeMode="contain"
                     />
                 </View>
-
-                {/* Botón volver */}
-                <TouchableOpacity
-                    style={[styles.backButton, { top: insets.top + 12 }]}
-                    onPress={() => router.back()}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                    <Ionicons name="arrow-back" size={26} color={colors.primary} />
-                </TouchableOpacity>
             </View>
 
             {/* ── BOTTOM SHEET – formulario ── */}
             <View style={styles.sheet}>
                 <ScrollView
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
+                    bounces={false}
                 >
-                    <Text style={styles.title}>Crear Cuenta</Text>
-
-                    {/* Nombres* */}
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Nombres*"
-                        placeholderTextColor={palette.purple3}
-                        value={nombres}
-                        onChangeText={setNombres}
-                        autoCapitalize="words"
-                    />
-
-                    {/* Apellidos* */}
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Apellidos*"
-                        placeholderTextColor={palette.purple3}
-                        value={apellidos}
-                        onChangeText={setApellidos}
-                        autoCapitalize="words"
-                    />
-
-                    {/* Empresa (opcional) */}
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Nombre de la empresa"
-                        placeholderTextColor={palette.purple3}
-                        value={empresa}
-                        onChangeText={setEmpresa}
-                        autoCapitalize="words"
-                    />
-
-                    {/* Correo* */}
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Correo Electronico *"
-                        placeholderTextColor={palette.purple3}
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                    />
-
-                    {/* Contraseña* */}
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Contraseña *"
-                        placeholderTextColor={palette.purple3}
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                    />
-
-                    {/* Checkbox Términos y Condiciones* */}
-                    <TouchableOpacity
-                        style={styles.checkboxRow}
-                        activeOpacity={0.7}
-                        onPress={() => setAcceptedTerms(!acceptedTerms)}
-                    >
-                        <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
-                            {acceptedTerms && (
-                                <Ionicons name="checkmark" size={14} color={colors.bgPage} />
-                            )}
-                        </View>
-                        <Text style={styles.checkboxLabel}>
-                            Acepta los{" "}
-                            <Text style={styles.checkboxLink}>Terminos y Condiciones</Text>
-                            {"\n"}para usar la app *
-                        </Text>
-                    </TouchableOpacity>
-
-                    {/* Botón Registrarse */}
-                    <TouchableOpacity
-                        style={[styles.registerButton, loading && { opacity: 0.7 }]}
-                        activeOpacity={0.85}
-                        onPress={handleRegister}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color={colors.textOnPrimary} />
-                        ) : (
-                            <Text style={styles.registerButtonText}>Registrarse</Text>
-                        )}
-                    </TouchableOpacity>
-
-                    {/* Divider */}
-                    <View style={styles.divider}>
-                        <View style={sharedStyles.dividerLine} />
-                        <View
-                            style={[
-                                sharedStyles.dividerDot,
-                                {
-                                    backgroundColor: "transparent",
-                                    borderWidth: 1,
-                                    borderColor: colors.primary,
-                                },
-                            ]}
-                        />
-                        <View style={sharedStyles.dividerLine} />
+                    <View style={styles.sheetHeader}>
+                        <Text style={styles.title}>Crea tu Cuenta</Text>
+                        <Text style={styles.subtitle}>Únete a Analitika y optimiza tus campañas.</Text>
                     </View>
 
-                    {/* Footer */}
-                    <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
-                        <Text style={styles.footerText}>
-                            ¿Ya tienes Cuenta ?{" "}
-                            <Text style={styles.footerLink}>Inicia Sesión</Text>
-                        </Text>
-                    </TouchableOpacity>
+                    <View style={styles.form}>
+                        {/* Nombres */}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Nombres</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Tus nombres"
+                                placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                                value={nombres}
+                                onChangeText={setNombres}
+                                autoCapitalize="words"
+                            />
+                        </View>
+
+                        {/* Apellidos */}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Apellidos</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Tus apellidos"
+                                placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                                value={apellidos}
+                                onChangeText={setApellidos}
+                                autoCapitalize="words"
+                            />
+                        </View>
+
+                        {/* Empresa (opcional) */}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Empresa <Text style={styles.optional}>(Opcional)</Text></Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Nombre de tu empresa"
+                                placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                                value={empresa}
+                                onChangeText={setEmpresa}
+                                autoCapitalize="words"
+                            />
+                        </View>
+
+                        {/* Correo */}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Correo Electrónico</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="ejemplo@correo.com"
+                                placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                                value={email}
+                                onChangeText={setEmail}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+                        </View>
+
+                        {/* Contraseña */}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Contraseña</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Mínimo 8 caracteres"
+                                placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry
+                            />
+                        </View>
+
+                        {/* Checkbox Términos y Condiciones */}
+                        <TouchableOpacity
+                            style={styles.checkboxRow}
+                            activeOpacity={0.7}
+                            onPress={() => setAcceptedTerms(!acceptedTerms)}
+                        >
+                            <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
+                                {acceptedTerms && (
+                                    <Ionicons name="checkmark" size={14} color="#fff" />
+                                )}
+                            </View>
+                            <Text style={styles.checkboxLabel}>
+                                Acepto los{" "}
+                                <Text 
+                                    style={styles.checkboxLink}
+                                    onPress={(e) => {
+                                        e.stopPropagation();
+                                        setShowTermsModal(true);
+                                    }}
+                                >
+                                    Términos y Condiciones
+                                </Text>{" "}
+                                para usar la app
+                            </Text>
+                        </TouchableOpacity>
+
+                        {/* Botón Registrarse */}
+                        <TouchableOpacity
+                            style={[styles.registerButton, loading && { opacity: 0.7 }]}
+                            activeOpacity={0.85}
+                            onPress={handleRegister}
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color={colors.textOnPrimary} />
+                            ) : (
+                                <Text style={styles.registerButtonText}>Crear cuenta ahora</Text>
+                            )}
+                        </TouchableOpacity>
+
+                        {/* Footer */}
+                        <View style={styles.footer}>
+                            <Text style={styles.footerText}>¿Ya tienes una cuenta? </Text>
+                            <TouchableOpacity onPress={() => router.replace("/(auth)/login")} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                <Text style={styles.footerLink}>Inicia Sesión</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                 </ScrollView>
             </View>
+
+            {/* ── MODAL TÉRMINOS Y CONDICIONES ── */}
+            <Modal
+                visible={showTermsModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowTermsModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Términos y Condiciones</Text>
+                        </View>
+                        <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                            <Text style={styles.modalText}>
+                                ¡Bienvenido a Analitika! Al utilizar nuestra aplicación, aceptas las siguientes condiciones:
+                                {"\n\n"}
+                                1. Uso de la plataforma{"\n"}
+                                Analitika proporciona herramientas para la gestión y seguimiento de enlaces en campañas de marketing. No se permite el uso de la plataforma para fines ilícitos, malintencionados o de spam.
+                                {"\n\n"}
+                                2. Privacidad y Seguridad de datos{"\n"}
+                                Nos comprometemos a proteger la información que registres, incluyendo las métricas de tus campañas. No venderemos ni compartiremos tus datos con terceros sin tu consentimiento expreso.
+                                {"\n\n"}
+                                3. Responsabilidad del Usuario{"\n"}
+                                Eres el único responsable del contenido de las campañas y de los enlaces que compartas a través de nuestra plataforma. Analitika no se responsabiliza por enlaces a sitios maliciosos creados por los usuarios.
+                                {"\n\n"}
+                                4. Disponibilidad del Servicio{"\n"}
+                                Haremos nuestro mejor esfuerzo para garantizar que el servicio esté disponible 24/7, pero no nos responsabilizamos por caídas temporales del servidor o pérdidas de datos por fuerza mayor.
+                                {"\n\n"}
+                                5. Modificaciones{"\n"}
+                                Nos reservamos el derecho de modificar estos términos en cualquier momento. Te notificaremos de antemano sobre cualquier cambio significativo.
+                            </Text>
+                        </ScrollView>
+                        <TouchableOpacity
+                            style={styles.modalAcceptButton}
+                            onPress={() => {
+                                setAcceptedTerms(true);
+                                setShowTermsModal(false);
+                            }}
+                        >
+                            <Text style={styles.modalAcceptText}>Aceptar Términos</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.modalCloseButton}
+                            onPress={() => setShowTermsModal(false)}
+                        >
+                            <Text style={styles.modalCloseText}>Cerrar sin aceptar</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </KeyboardAvoidingView>
     );
 }
@@ -248,76 +317,106 @@ export default function Register() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.bgAccent, // todo el fondo en lavanda como el prototipo
+        backgroundColor: colors.bgPage, // Fondo blanco
     },
 
     /* ── HEADER ── */
     header: {
-        flex: 0.2,
-        backgroundColor: colors.bgAccent,
+        height: height * 0.28,
+        backgroundColor: colors.bgPage,
         justifyContent: "center",
         alignItems: "center",
-        overflow: "hidden",
         position: "relative",
     },
-
     blobTopLeft: {
         position: "absolute",
-        top: -30,
-        left: -20,
-        width: 110,
-        height: 110,
-        borderRadius: 55,
+        top: -40,
+        left: -30,
+        width: 150,
+        height: 150,
+        borderRadius: 75,
         backgroundColor: colors.bgBlob,
     },
-
     logoWrapper: {
         alignItems: "center",
         justifyContent: "center",
+        marginTop: 20,
     },
     logoImage: {
-        width: 300,
-        height: 400,
+        width: 180,
+        height: 180,
     },
-
     backButton: {
         position: "absolute",
-        left: 20,
-        padding: 6,
+        left: spacing.lg,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: "rgba(255,255,255,0.5)",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 10,
     },
 
     /* ── BOTTOM SHEET ── */
     sheet: {
-        flex: 0.8,
-        backgroundColor: colors.bgAccent,
+        flex: 1,
+        backgroundColor: colors.bgAccent, // Lavanda card background
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
         paddingHorizontal: spacing.xxl,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 15,
+        elevation: 10,
+        overflow: "hidden",
     },
-
     scrollContent: {
-        paddingBottom: spacing.xxxl,
+        paddingTop: spacing.xxl,
     },
-
+    sheetHeader: {
+        alignItems: "center",
+        marginBottom: spacing.xxl,
+    },
     title: {
         fontSize: typography.size2xl,
         fontWeight: typography.bold,
-        color: colors.primary,
+        color: colors.textPrimary,
+        marginBottom: spacing.xs,
+    },
+    subtitle: {
+        fontSize: typography.sizeMd,
+        color: colors.textSecondary,
         textAlign: "center",
-        marginBottom: spacing.xxl,
     },
 
-    input: {
-        backgroundColor: colors.bgInput,
-        borderRadius: radii.lg,
-        paddingHorizontal: spacing.xl,
-        paddingVertical: 15,
-        fontSize: typography.sizeMd,
-        color: colors.primary,
+    form: {
+        width: "100%",
+    },
+    inputGroup: {
         marginBottom: spacing.lg,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 3,
-        elevation: 2,
+    },
+    label: {
+        fontSize: typography.sizeSm,
+        fontWeight: typography.semibold,
+        color: colors.textSecondary,
+        marginBottom: spacing.xs,
+        marginLeft: 4,
+    },
+    optional: {
+        fontWeight: "normal",
+        color: palette.purple3,
+    },
+    input: {
+        backgroundColor: "#fff",
+        borderWidth: 1,
+        borderColor: "#E2E8F0",
+        borderRadius: radii.md,
+        paddingHorizontal: spacing.lg,
+        paddingVertical: Platform.OS === "ios" ? 16 : 14,
+        fontSize: typography.sizeMd,
+        color: colors.textPrimary,
     },
 
     /* Checkbox */
@@ -325,18 +424,19 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         marginBottom: spacing.xl,
-        gap: spacing.md,
+        marginTop: spacing.sm,
+        paddingHorizontal: 4,
     },
     checkbox: {
-        width: 22,
-        height: 22,
-        borderRadius: radii.sm,
-        borderWidth: 1.5,
-        borderColor: colors.borderDivider,
-        backgroundColor: colors.bgInput,
+        width: 24,
+        height: 24,
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: "#CBD5E1",
+        backgroundColor: "#fff",
         justifyContent: "center",
         alignItems: "center",
-        flexShrink: 0,
+        marginRight: spacing.md,
     },
     checkboxChecked: {
         backgroundColor: colors.primary,
@@ -345,39 +445,99 @@ const styles = StyleSheet.create({
     checkboxLabel: {
         flex: 1,
         fontSize: typography.sizeSm,
-        color: colors.textBody,
+        color: colors.textSecondary,
         lineHeight: 20,
     },
     checkboxLink: {
-        color: "#2D9CFF",
-        fontWeight: typography.semibold,
+        color: colors.primary,
+        fontWeight: typography.bold,
     },
 
     /* Botón */
     registerButton: {
-        ...sharedStyles.primaryButton,
-        marginBottom: spacing.xl,
+        backgroundColor: colors.primary,
+        borderRadius: radii.pill,
+        paddingVertical: 18,
+        alignItems: "center",
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+        marginBottom: spacing.xxl,
     },
     registerButtonText: {
-        ...sharedStyles.primaryButtonText,
-    },
-
-    /* Divider */
-    divider: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginBottom: spacing.xl,
-        paddingHorizontal: spacing.lg,
+        color: "#fff",
+        fontSize: typography.sizeLg,
+        fontWeight: typography.bold,
     },
 
     /* Footer */
+    footer: {
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+    },
     footerText: {
-        textAlign: "center",
-        fontSize: typography.sizeSm,
-        color: colors.textBody,
+        fontSize: typography.sizeMd,
+        color: colors.textSecondary,
     },
     footerLink: {
-        color: "#2D9CFF",
-        fontWeight: typography.semibold,
+        fontSize: typography.sizeMd,
+        color: colors.primary,
+        fontWeight: typography.bold,
+    },
+
+    /* Modal Términos y Condiciones */
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        justifyContent: "flex-end",
+    },
+    modalContent: {
+        backgroundColor: colors.bgPage,
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        padding: spacing.xxl,
+        maxHeight: height * 0.85,
+    },
+    modalHeader: {
+        alignItems: "center",
+        marginBottom: spacing.lg,
+    },
+    modalTitle: {
+        fontSize: typography.sizeXl,
+        fontWeight: typography.bold,
+        color: colors.textPrimary,
+        textAlign: "center",
+    },
+    modalScroll: {
+        marginBottom: spacing.xl,
+    },
+    modalText: {
+        fontSize: typography.sizeSm,
+        color: colors.textSecondary,
+        lineHeight: 22,
+    },
+    modalAcceptButton: {
+        backgroundColor: colors.primary,
+        paddingVertical: 16,
+        borderRadius: radii.pill,
+        alignItems: "center",
+        marginBottom: spacing.sm,
+    },
+    modalAcceptText: {
+        color: "#fff",
+        fontSize: typography.sizeMd,
+        fontWeight: typography.bold,
+    },
+    modalCloseButton: {
+        paddingVertical: 16,
+        alignItems: "center",
+    },
+    modalCloseText: {
+        color: colors.textSecondary,
+        fontSize: typography.sizeMd,
+        fontWeight: typography.bold,
     },
 });

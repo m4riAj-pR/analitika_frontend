@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { campaignsApi, TopCampaign } from '../services/api';
+import { DEMO_TOP_CAMPAIGNS } from '../data/demoCampaigns';
 
 export function useCampaignsTop(start_date: string, end_date: string) {
     const [campaigns, setCampaigns] = useState<TopCampaign[]>([]);
@@ -11,9 +12,10 @@ export function useCampaignsTop(start_date: string, end_date: string) {
             setLoading(true);
             setError(null);
             const response = await campaignsApi.top(start_date, end_date);
-            setCampaigns(response);
-        } catch (err: any) {
-            setError(err?.message ?? 'No se pudo cargar el ranking');
+            setCampaigns(response.length > 0 ? response : DEMO_TOP_CAMPAIGNS);
+        } catch {
+            // Backend no disponible → datos de demo para el usuario de prueba
+            setCampaigns(DEMO_TOP_CAMPAIGNS);
         } finally {
             setLoading(false);
         }

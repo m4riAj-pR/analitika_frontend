@@ -5,6 +5,9 @@ import type { Campaign, CampaignPayload, TopCampaign } from './types';
 export const campaignsApi = {
   list: () => request<Campaign[]>('/campaigns', { method: 'GET' }),
 
+  get: (id_campaign: number) => 
+    request<Campaign>(`/campaigns/${id_campaign}`, { method: 'GET' }),
+
   create: (payload: CampaignPayload) =>
     request<Campaign>('/campaigns', {
       method: 'POST',

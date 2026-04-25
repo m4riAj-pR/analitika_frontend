@@ -3,16 +3,29 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL, TOKEN_KEY } from './config';
 import type { ApiError } from './types';
 
+let memoryToken: string | null = null;
+
 async function getToken() {
-  return AsyncStorage.getItem(TOKEN_KEY);
+  try {
+    const t = await AsyncStorage.getItem(TOKEN_KEY);
+    return t || memoryToken;
+  } catch {
+    return memoryToken;
+  }
 }
 
 export async function saveToken(token: string) {
-  await AsyncStorage.setItem(TOKEN_KEY, token);
+  memoryToken = token;
+  try {
+    await AsyncStorage.setItem(TOKEN_KEY, token);
+  } catch { }
 }
 
 export async function removeToken() {
-  await AsyncStorage.removeItem(TOKEN_KEY);
+  memoryToken = null;
+  try {
+    await AsyncStorage.removeItem(TOKEN_KEY);
+  } catch { }
 }
 
 export async function request<T>(
