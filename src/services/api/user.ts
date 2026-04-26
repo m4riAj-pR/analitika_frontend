@@ -1,14 +1,18 @@
-// src/services/api/user.ts
-import { request } from './client';
+import { request } from "./client";
 
-import type { AuthUser, UpdateProfilePayload } from './types';
+export const getProfile = () =>
+  request("/analitika/auth/me");
 
-export const usersApi = {
-    getMe: () => request<AuthUser>('/users/me', { method: 'GET' }),
+export const updateProfile = (data: any) =>
+  request("/analitika/auth/update-profile", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
 
-    updateMe: (payload: UpdateProfilePayload) =>
-        request<AuthUser>('/users/me', {
-            method: 'PUT',
-            body: JSON.stringify(payload),
-        }),
+export const userApi = {
+  getAll,
+  create,
+  update,
+  remove,
 };
+

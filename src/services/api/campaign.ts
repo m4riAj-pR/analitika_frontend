@@ -1,28 +1,23 @@
-// src/services/api/campaign.ts
-import { request } from './client';
-import type { Campaign, CampaignPayload, TopCampaign } from './types';
+import { request } from "./client";
+
+export const list = () =>
+  request("/analitika/campaigns");
 
 export const campaignsApi = {
-  list: () => request<Campaign[]>('/campaigns', { method: 'GET' }),
-
-  get: (id_campaign: number) => 
-    request<Campaign>(`/campaigns/${id_campaign}`, { method: 'GET' }),
-
-  create: (payload: CampaignPayload) =>
-    request<Campaign>('/campaigns', {
-      method: 'POST',
-      body: JSON.stringify(payload),
+  list,
+  getAll: list,
+  create: (data: any) =>
+    request("/analitika/campaigns", {
+      method: "POST",
+      body: JSON.stringify(data),
     }),
-
-  update: (id_campaign: number, payload: CampaignPayload) =>
-    request<Campaign>(`/campaigns/${id_campaign}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
+  update: (id: number, data: any) =>
+    request(`/analitika/campaigns/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
     }),
-
-  top: (start_date: string, end_date: string) =>
-    request<TopCampaign[]>(
-      `/campaigns/top?start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}`,
-      { method: 'GET' }
-    ),
+  remove: (id: number) =>
+    request(`/analitika/campaigns/${id}`, {
+      method: "DELETE",
+    }),
 };

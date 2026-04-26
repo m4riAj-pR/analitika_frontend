@@ -25,7 +25,7 @@ import { trackingLinksApi } from '../../../src/services/api/tracking';
 import { trackingStatsApi } from '../../../src/services/api/stats';
 import { useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { DEMO_TRACKING_LINKS, isDemoId } from '../../../src/data/demoCampaigns';
+
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function CampaignScreen() {
@@ -51,16 +51,6 @@ export default function CampaignScreen() {
 
     const copyLink = async (id_campaign: number) => {
         try {
-            // Campañas de demo: usar el link local
-            if (isDemoId(id_campaign)) {
-                const demoLinks = DEMO_TRACKING_LINKS[id_campaign];
-                if (demoLinks && demoLinks.length > 0) {
-                    await Clipboard.setStringAsync(demoLinks[0].url);
-                    Alert.alert('¡Copiado!', `Link de demo copiado:\n${demoLinks[0].url}`);
-                }
-                return;
-            }
-
             const links = await trackingLinksApi.listByCampaign(id_campaign);
             if (links && links.length > 0) {
                 const trackUrl = trackingLinksApi.publicTrackUrl(links[0].id_link);

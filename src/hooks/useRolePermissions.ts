@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as Service from '../services/api/conversion';
+import * as Service from '../services/api/rolePermissions';
 
-export function useConversions() {
-    const [conversions, setConversions] = useState<any[]>([]);
+export function useRolePermissions() {
+    const [rolePermissions, setRolePermissions] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -11,11 +11,11 @@ export function useConversions() {
             setLoading(true);
             setError(null);
             const response: any = await Service.getAll();
-            setConversions(response.response || []);
+            setRolePermissions(response.response || []);
         } catch (err: any) {
-            console.error('Error fetching conversions:', err);
-            setError(err.message || 'Error al cargar conversiones');
-            setConversions([]);
+            console.error('Error fetching role permissions:', err);
+            setError(err.message || 'Error al cargar permisos de rol');
+            setRolePermissions([]);
         } finally {
             setLoading(false);
         }
@@ -25,7 +25,7 @@ export function useConversions() {
         fetchAll();
     }, [fetchAll]);
 
-    return { conversions, loading, error, reload: fetchAll };
+    return { rolePermissions, loading, error, reload: fetchAll };
 }
 
 

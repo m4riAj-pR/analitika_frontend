@@ -1,43 +1,53 @@
-import { useEffect, useState } from 'react';
-import { AuthUser, UpdateProfilePayload, usersApi } from '../services/api';
+import { useCallback, useEffect, useState } from 'react';
+import * as authService from '../services/api/auth';
+import * as userService from '../services/api/user';
 
 export function useProfile() {
-    const [profile, setProfile] = useState<AuthUser | null>(null);
+    const [profile, setProfile] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const getProfile = async () => {
+    const fetchProfile = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            const data = await usersApi.getMe();
-            setProfile(data);
+            const response: any = await authService.me();
+            // Asumiendo que la respuesta viene envuelta en .response
+            setProfile(response.response || response);
         } catch (err: any) {
-            setError(err?.message ?? 'No se pudo cargar el perfil');
+            console.error('Error fetching profile:', err);
+            setError(err.message || 'Error al cargar perfil');
         } finally {
             setLoading(false);
         }
-    };
-
-    useEffect(() => {
-        getProfile();
     }, []);
 
-    const updateProfile = async (payload: UpdateProfilePayload) => {
+    const updateProfile = async (data: any) => {
         try {
             setSaving(true);
-            setError(null);
-            const updated = await usersApi.updateMe(payload);
+            const response: any = await userService.updateProfile(data);
+            const updated = response.response || response;
             setProfile(updated);
             return updated;
         } catch (err: any) {
-            setError(err?.message ?? 'No se pudo actualizar el perfil');
+            console.error('Error updating profile:', err);
             throw err;
         } finally {
             setSaving(false);
         }
     };
 
-    return { profile, loading, saving, error, getProfile, updateProfile };
+    useEffect(() => {
+        fetchProfile();
+    }, [fetchProfile]);
+
+    return { 
+        profile, 
+        loading, 
+        saving, 
+        error, 
+        updateProfile, 
+        refreshProfile: fetchProfile 
+    };
 }

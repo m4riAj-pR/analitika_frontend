@@ -1,31 +1,32 @@
 import { useCallback, useEffect, useState } from 'react';
-import { campaignsApi } from '../services/api/campaign';
-import type { Campaign } from '../services/api/types';
-import { DEMO_CAMPAIGNS } from '../data/demoCampaigns';
+import * as Service from '../services/api/campaign';
 
 export function useCampaigns() {
-    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+    const [campaigns, setCampaigns] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchCampaigns = useCallback(async () => {
+    const fetchAll = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            const response = await campaignsApi.list();
-            // Si el backend no retorna campañas, usar las de demo
-            setCampaigns(response.length > 0 ? response : DEMO_CAMPAIGNS);
-        } catch {
-            // Backend no disponible → datos de demo para el usuario de prueba
-            setCampaigns(DEMO_CAMPAIGNS);
+            const response: any = await Service.getAll();
+            setCampaigns(response.response || []);
+        } catch (err: any) {
+            console.error('Error fetching campaigns:', err);
+            setError(err.message || 'Error al cargar campañas');
+            setCampaigns([]);
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        fetchCampaigns();
-    }, [fetchCampaigns]);
+        fetchAll();
+    }, [fetchAll]);
 
-    return { campaigns, loading, error, reload: fetchCampaigns };
+    return { campaigns, loading, error, reload: fetchAll };
 }
+
+
+

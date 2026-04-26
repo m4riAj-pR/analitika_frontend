@@ -1,19 +1,21 @@
-import { request } from './client';
-import type { CampaignMetrics, DashboardResponse } from './types';
+import { request } from "./client";
 
-export const metricsApi = {
-  getByCampaign: (id_campaign: number) => request<CampaignMetrics>(`/metrics/${id_campaign}`),
-};
+export const getMetricas = (id_campaign: number) =>
+  request(`/analitika/stats/${id_campaign}`);
 
-export const dashboardApi = {
-  getSummary: () => request<DashboardResponse>('/dashboard'),
+export const getClicsPorDia = (id_campaign: number) =>
+  request(`/analitika/stats/${id_campaign}/clics-por-dia`);
+
+export const getTablaClic = (id_campaign: number) =>
+  request(`/analitika/stats/${id_campaign}/tabla-clics`);
+
+export const statsApi = {
+  getMetricas,
+  getClicsPorDia,
+  getTablaClic,
 };
 
 export const trackingStatsApi = {
-  registrarClick: (id_link: number) => request(`/tracking/click/${id_link}`, { method: 'POST' }),
-  getStats: (id_campaign: number) => request(`/tracking/stats/${id_campaign}`, { method: 'GET' }),
+  getStats: getMetricas, // Alias commonly used in the app
+  ...statsApi,
 };
-
-export const getMetricas = (id_campaign: number) => request(`/stats/${id_campaign}`, { method: 'GET' });
-export const getClicsPorDia = (id_campaign: number) => request(`/stats/${id_campaign}/clics-por-dia`, { method: 'GET' });
-export const getTablaClic = (id_campaign: number) => request(`/stats/${id_campaign}/tabla-clics`, { method: 'GET' });

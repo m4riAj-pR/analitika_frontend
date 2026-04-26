@@ -1,14 +1,15 @@
 // src/services/api/client.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL, TOKEN_KEY } from './config';
+import { API_BASE_URL, API_TIMEOUT, TOKEN_KEY } from './config';
 import type { ApiError } from './types';
+
 
 let memoryToken: string | null = null;
 
 async function getToken() {
   try {
-    const t = await AsyncStorage.getItem(TOKEN_KEY);
-    return t || memoryToken;
+    const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
+    return storedToken || memoryToken;
   } catch {
     return memoryToken;
   }
@@ -35,6 +36,7 @@ export async function request<T>(
   const token = await getToken();
 
   const headers: Record<string, string> = {
+    Accept: 'application/json',
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> | undefined),
   };
@@ -43,27 +45,65 @@ export async function request<T>(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
 
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  try {
+    const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
-  if (!response.ok) {
-    const error: ApiError = {
-      message: data?.message || 'Ocurrió un error en la petición',
-      status: response.status,
-      details: data,
-    };
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
 
-    if (response.status === 401) {
-      await removeToken();
+    const text = await response.text();
+
+    let data: any = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = text;
     }
 
-    throw error;
-  }
+    if (!response.ok) {
+      const error: ApiError = {
+        message:
+          data?.detail ||
+          data?.message ||
+          data?.error ||
+          'Ocurrió un error en la petición',
+        status: response.status,
+        details: data,
+      };
 
-  return data as T;
+      if (response.status === 401) {
+        await removeToken();
+      }
+
+      throw error;
+    }
+
+    return data as T;
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw {
+        message: 'La petición tardó demasiado tiempo',
+        status: 408,
+        details: error,
+      } as ApiError;
+    }
+
+    if (error?.status) {
+      throw error;
+    }
+
+    throw {
+      message: 'No se pudo conectar con el servidor',
+      status: 0,
+      details: error,
+    } as ApiError;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }

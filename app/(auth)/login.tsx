@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
-import { authApi } from "../../src/services/api";
 import React, { useState } from "react";
 import {
+    ActivityIndicator,
     Alert,
     Image,
     KeyboardAvoidingView,
@@ -11,16 +11,17 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { authApi } from "../../src/services/api";
+import { API_BASE_URL } from "../../src/services/api/config";
+
 import {
     colors,
-    palette,
     radii,
     sharedStyles,
     spacing,
-    typography,
+    typography
 } from "../../src/theme/colors";
 
 export default function Login() {
@@ -36,7 +37,7 @@ export default function Login() {
             Alert.alert("Campo requerido", "Por favor ingresa tu Correo Electrónico.");
             return;
         }
-        
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email.trim())) {
             Alert.alert("Correo Inválido", "Por favor ingresa un correo electrónico válido.");
@@ -47,7 +48,7 @@ export default function Login() {
             Alert.alert("Campo requerido", "Por favor ingresa tu Contraseña.");
             return;
         }
-        
+
         try {
             setLoading(true);
             await authApi.login({
@@ -65,6 +66,7 @@ export default function Login() {
     };
 
     return (
+
         <KeyboardAvoidingView
             style={styles.container}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -79,7 +81,9 @@ export default function Login() {
 
                 {/* Blob lateral-izquierdo (pequeño, a media altura) */}
                 <View style={styles.blobMidLeft} />
-
+                <View>
+                    <Text>API: {API_BASE_URL}</Text>
+                </View>
                 {/* Logo oficial */}
                 <View style={styles.logoWrapper}>
                     <Image

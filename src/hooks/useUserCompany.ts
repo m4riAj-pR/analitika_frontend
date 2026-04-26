@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as Service from '../services/api/conversion';
+import * as Service from '../services/api/userCompany';
 
-export function useConversions() {
-    const [conversions, setConversions] = useState<any[]>([]);
+export function useUserCompany() {
+    const [userCompanies, setUserCompanies] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -11,11 +11,11 @@ export function useConversions() {
             setLoading(true);
             setError(null);
             const response: any = await Service.getAll();
-            setConversions(response.response || []);
+            setUserCompanies(response.response || []);
         } catch (err: any) {
-            console.error('Error fetching conversions:', err);
-            setError(err.message || 'Error al cargar conversiones');
-            setConversions([]);
+            console.error('Error fetching user company relations:', err);
+            setError(err.message || 'Error al cargar relaciones usuario-empresa');
+            setUserCompanies([]);
         } finally {
             setLoading(false);
         }
@@ -25,7 +25,7 @@ export function useConversions() {
         fetchAll();
     }, [fetchAll]);
 
-    return { conversions, loading, error, reload: fetchAll };
+    return { userCompanies, loading, error, reload: fetchAll };
 }
 
 

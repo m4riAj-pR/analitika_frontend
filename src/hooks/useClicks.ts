@@ -1,29 +1,32 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ClickItem, clicksApi } from '../services/api';
+import * as Service from '../services/api/clicks';
 
-export function useClicks(id_link?: number) {
-    const [clicks, setClicks] = useState<ClickItem[]>([]);
+export function useClicks() {
+    const [clicks, setClicks] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchClicks = useCallback(async () => {
-        if (!id_link) return;
-
+    const fetchAll = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            const response = await clicksApi.listByLink(id_link);
-            setClicks(response);
+            const response: any = await Service.getAll();
+            setClicks(response.response || []);
         } catch (err: any) {
-            setError(err?.message ?? 'No se pudieron cargar los clics');
+            console.error('Error fetching clicks:', err);
+            setError(err.message || 'Error al cargar clics');
+            setClicks([]);
         } finally {
             setLoading(false);
         }
-    }, [id_link]);
+    }, []);
 
     useEffect(() => {
-        fetchClicks();
-    }, [fetchClicks]);
+        fetchAll();
+    }, [fetchAll]);
 
-    return { clicks, loading, error, reload: fetchClicks };
+    return { clicks, loading, error, reload: fetchAll };
 }
+
+
+

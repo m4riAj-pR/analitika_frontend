@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  FlatList,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,13 +17,6 @@ import { campaignsApi } from '../../../src/services/api/campaign';
 import { getClicsPorDia, getMetricas, getTablaClic } from '../../../src/services/api/stats';
 import { colors, palette, radii, shadows, spacing, typography } from '../../../src/theme/colors';
 import type { Campaign } from '../../../src/services/api/types';
-import {
-  DEMO_CAMPAIGNS,
-  DEMO_CLICS_POR_DIA,
-  DEMO_METRICAS,
-  DEMO_TABLA_CLICS,
-  isDemoId,
-} from '../../../src/data/demoCampaigns';
 
 const { width } = Dimensions.get('window');
 
@@ -33,17 +27,70 @@ const formatCurrency = (value: number) =>
     minimumFractionDigits: 0,
   }).format(value);
 
+// ─── Header Component ────────────────────────────────────────────────────────
+function Header() {
+  return (
+    <View style={styles.headerContainer}>
+      <View style={styles.logoWrapper}>
+        <View style={styles.logoBlob} />
+        <Text style={styles.logoText}>Analitika</Text>
+      </View>
+      <TouchableOpacity style={styles.profileButton} activeOpacity={0.7}>
+        <Ionicons name="person-circle" size={42} color={palette.purple3} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Campaign Card ───────────────────────────────────────────────────────────
+function CampaignCard({ campaign, onSelect }: { campaign: Campaign; onSelect: () => void }) {
+  // Generar un diseño decorativo aleatorio basado en el ID o nombre
+  const isAltDesign = campaign.name.length % 2 === 0;
+
+  return (
+    <View style={styles.cardContainer}>
+      <View style={styles.cardContent}>
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardTitle}>Nombre</Text>
+          <Text style={styles.cardTitle}>{campaign.name}</Text>
+        </View>
+
+        {/* Decoración visual (barras o semicírculo como en la imagen) */}
+        <View style={styles.decorationContainer}>
+          {isAltDesign ? (
+            <View style={styles.barsContainer}>
+              <View style={[styles.bar, { height: '40%' }]} />
+              <View style={[styles.bar, { height: '70%' }]} />
+              <View style={[styles.bar, { height: '100%' }]} />
+            </View>
+          ) : (
+            <View style={styles.circleDecoration} />
+          )}
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={styles.cardButton}
+        activeOpacity={0.8}
+        onPress={onSelect}
+      >
+        <Text style={styles.cardButtonText}>Ver Dashboard</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // ─── Empty State ─────────────────────────────────────────────────────────────
 function EmptyState() {
   const router = useRouter();
   return (
     <View style={emptyStyles.wrapper}>
       <View style={emptyStyles.iconCircle}>
-        <Ionicons name="bar-chart-outline" size={52} color={colors.primary} />
+        <Ionicons name="layers-outline" size={52} color={colors.primary} />
       </View>
-      <Text style={emptyStyles.title}>Sin campañas aún</Text>
+      <Text style={emptyStyles.title}>No hay campañas</Text>
       <Text style={emptyStyles.subtitle}>
-        Crea tu primera campaña para comenzar a ver métricas, clics y conversiones aquí.
+        Parece que aún no has creado ninguna campaña. Comienza ahora para ver tus resultados.
       </Text>
       <TouchableOpacity
         style={emptyStyles.cta}
@@ -51,7 +98,7 @@ function EmptyState() {
         onPress={() => router.push('/(app)/create')}
       >
         <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-        <Text style={emptyStyles.ctaText}>Crear campaña</Text>
+        <Text style={emptyStyles.ctaText}>Crear mi primera campaña</Text>
       </TouchableOpacity>
     </View>
   );
@@ -88,21 +135,13 @@ export default function DashboardScreen() {
     campaignsApi
       .list()
       .then((data) => {
-        const result = data.length > 0 ? data : DEMO_CAMPAIGNS;
-        setCampaigns(result);
-        if (result.length > 0) {
-          setSelectedCampaign(result[0]);
-        } else {
-          setSelectedCampaign(null);
-        }
+        setCampaigns(data || []);
+        setSelectedCampaign(null);
       })
-      .catch(() => {
-        setCampaigns(DEMO_CAMPAIGNS);
-        if (DEMO_CAMPAIGNS.length > 0) {
-          setSelectedCampaign(DEMO_CAMPAIGNS[0]);
-        } else {
-          setSelectedCampaign(null);
-        }
+      .catch((err) => {
+        console.error("Error loading campaigns:", err);
+        setCampaigns([]);
+        setSelectedCampaign(null);
       })
       .finally(() => setLoadingCampaigns(false));
   }, []);
@@ -111,16 +150,6 @@ export default function DashboardScreen() {
   const fetchStats = useCallback(async (campaign: Campaign) => {
     setLoadingStats(true);
     setStatsError(false);
-
-    // Si es campaña de demo, usar datos locales directamente
-    if (isDemoId(campaign.id_campaign)) {
-      const id = campaign.id_campaign;
-      setMetricas(DEMO_METRICAS[id] ?? null);
-      setClicsPorDia(DEMO_CLICS_POR_DIA[id] ?? []);
-      setTablaClics(DEMO_TABLA_CLICS[id] ?? []);
-      setLoadingStats(false);
-      return;
-    }
 
     try {
       const [met, clicsDia, tabla] = await Promise.all([
@@ -159,10 +188,30 @@ export default function DashboardScreen() {
   if (campaigns.length === 0) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Dashboard</Text>
-        </View>
+        <Header />
         <EmptyState />
+      </View>
+    );
+  }
+
+  // ─── Vista de Lista de Dashboards ──────────────────────────────────────────
+  if (!selectedCampaign) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <Header />
+        <Text style={styles.listTitle}>DashBoards</Text>
+        <FlatList
+          data={campaigns}
+          keyExtractor={(item) => String(item.id_campaign)}
+          renderItem={({ item }) => (
+            <CampaignCard
+              campaign={item}
+              onSelect={() => setSelectedCampaign(item)}
+            />
+          )}
+          contentContainerStyle={[styles.listScrollContent, { paddingBottom: insets.bottom + 20 }]}
+          showsVerticalScrollIndicator={false}
+        />
       </View>
     );
   }
@@ -175,9 +224,17 @@ export default function DashboardScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
 
-      {/* HEADER */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Dashboard</Text>
+      {/* HEADER DE DETALLE */}
+      <View style={styles.detailHeader}>
+        <TouchableOpacity
+          onPress={() => setSelectedCampaign(null)}
+          style={styles.backButton}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.primary} />
+          <Text style={styles.backText}>Volver</Text>
+        </TouchableOpacity>
+        <Text style={styles.detailTitle}>Estadísticas</Text>
+        <View style={{ width: 40 }} /> {/* Spacer */}
       </View>
 
       <ScrollView
@@ -354,8 +411,8 @@ const emptyStyles = StyleSheet.create({
   },
   ctaText: {
     color: '#fff',
-    fontSize: typography.sizeMd,
     fontWeight: typography.bold,
+    fontSize: 16,
   },
 });
 
@@ -364,15 +421,143 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bgPage },
   centered: { justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 10, color: colors.textSecondary, fontSize: typography.sizeSm },
-  header: {
+
+  /* Header */
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    height: 70,
+  },
+  logoWrapper: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoBlob: {
+    position: 'absolute',
+    left: -10,
+    top: -10,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: palette.purple3,
+    opacity: 0.3,
+  },
+  logoText: {
+    fontSize: 26,
+    fontWeight: typography.bold,
+    color: colors.primary,
+    marginLeft: 5,
+  },
+  profileButton: {
+    padding: 2,
+  },
+
+  /* List View */
+  listTitle: {
+    fontSize: 32,
+    fontWeight: typography.bold,
+    color: colors.primary,
+    marginHorizontal: spacing.xl,
+    marginVertical: spacing.lg,
+  },
+  listScrollContent: {
+    paddingHorizontal: spacing.xl,
+    gap: spacing.xl,
+  },
+
+  /* Campaign Card */
+  cardContainer: {
+    backgroundColor: '#EAE6F8',
+    borderRadius: 30,
+    padding: 24,
+    height: 180,
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+    ...shadows.card,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: typography.bold,
+    color: '#1A1A1A',
+    lineHeight: 28,
+  },
+  decorationContainer: {
+    width: 120,
+    height: 80,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+  },
+  barsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    height: '100%',
+  },
+  bar: {
+    width: 25,
+    backgroundColor: palette.purple3,
+    borderRadius: 4,
+    opacity: 0.6,
+  },
+  circleDecoration: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: palette.purple3,
+    opacity: 0.4,
+    position: 'absolute',
+    right: -40,
+    top: -20,
+  },
+  cardButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radii.pill,
+    paddingVertical: 12,
+    alignItems: 'center',
+    width: '100%',
+  },
+  cardButtonText: {
+    color: '#FFFFFF',
+    fontWeight: typography.bold,
+    fontSize: 16,
+  },
+
+  /* Detail Header */
+  detailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
   },
-  title: {
-    fontSize: typography.size2xl,
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: 80,
+  },
+  backText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: typography.medium,
+  },
+  detailTitle: {
+    fontSize: 20,
     fontWeight: typography.bold,
     color: colors.primary,
   },
+
   scrollContent: {
     paddingHorizontal: spacing.xl,
     gap: spacing.xl,
