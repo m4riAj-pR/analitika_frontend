@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useProfile } from '../../../src/hooks/UseProfile';
+import { useProfile } from '../../../src/hooks/useProfile';
 import { authApi } from '../../../src/services/api/auth';
 import { removeToken } from '../../../src/services/api/client';
 import { colors, palette, radii, shadows, spacing, typography } from '../../../src/theme/colors';

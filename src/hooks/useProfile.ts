@@ -26,7 +26,11 @@ export function useProfile() {
     const updateProfile = async (data: any) => {
         try {
             setSaving(true);
-            const response: any = await userService.updateProfile(data);
+            const userId = profile?.id_user || profile?.id; // Intenta ambos por si acaso
+            if (!userId) {
+                throw new Error("No se pudo encontrar el ID del usuario para actualizar.");
+            }
+            const response: any = await userService.updateProfile(userId, data);
             const updated = response.response || response;
             setProfile(updated);
             return updated;

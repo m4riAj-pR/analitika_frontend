@@ -1,29 +1,29 @@
 import { request } from "./client";
 
-export const getAll = () =>
+export const getRolePermissions = () =>
   request("/analitika/role-permissions");
 
-export const create = (data: any) =>
+export const createRolePermission = (data: any) =>
   request("/analitika/role-permissions", {
     method: "POST",
     body: JSON.stringify(data),
   });
 
-export const update = (id: number, data: any) =>
+export const updateRolePermission = (id: number, data: any) =>
   request(`/analitika/role-permissions/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 
-export const remove = (id: number) =>
+export const deleteRolePermission = (id: number) =>
   request(`/analitika/role-permissions/${id}`, {
     method: "DELETE",
   });
 
 export const rolePermissionsApi = {
-  getAll,
-  create,
-  update,
-  remove,
+  getRolePermissions,
+  createRolePermission,
+  updateRolePermission,
+  deleteRolePermission,
 };
 

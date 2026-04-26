@@ -1,29 +1,29 @@
 import { request } from "./client";
 
-export const getAll = () =>
+export const getCompanies = () =>
   request("/analitika/companies");
 
-export const create = (data: any) =>
+export const createCompany = (data: any) =>
   request("/analitika/companies", {
     method: "POST",
     body: JSON.stringify(data),
   });
 
-export const update = (id: number, data: any) =>
+export const updateCompany = (id: number, data: any) =>
   request(`/analitika/companies/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 
-export const remove = (id: number) =>
+export const deleteCompany = (id: number) =>
   request(`/analitika/companies/${id}`, {
     method: "DELETE",
   });
 
 export const companiesApi = {
-  getAll,
-  create,
-  update,
-  remove,
+  getCompanies,
+  createCompany,
+  updateCompany,
+  deleteCompany,
 };
 

@@ -15,6 +15,8 @@ async function getToken() {
   }
 }
 
+export const USER_KEY = 'analitika_user';
+
 export async function saveToken(token: string) {
   memoryToken = token;
   try {
@@ -22,10 +24,26 @@ export async function saveToken(token: string) {
   } catch { }
 }
 
+export async function saveUser(user: any) {
+  try {
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch { }
+}
+
+export async function getUser() {
+  try {
+    const user = await AsyncStorage.getItem(USER_KEY);
+    return user ? JSON.parse(user) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function removeToken() {
   memoryToken = null;
   try {
     await AsyncStorage.removeItem(TOKEN_KEY);
+    await AsyncStorage.removeItem(USER_KEY);
   } catch { }
 }
 
@@ -50,6 +68,8 @@ export async function request<T>(
 
   try {
     const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    console.log("REQUEST URL", url);
+    console.log("REQUEST OPTIONS", options);
 
     const response = await fetch(url, {
       ...options,
@@ -58,6 +78,8 @@ export async function request<T>(
     });
 
     const text = await response.text();
+    console.log("RESPONSE STATUS", response.status);
+    console.log("RESPONSE TEXT", text);
 
     let data: any = null;
     try {

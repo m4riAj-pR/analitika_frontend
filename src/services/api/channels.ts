@@ -1,29 +1,29 @@
 import { request } from "./client";
 
-export const getAll = () =>
+export const getChannels = () =>
   request("/analitika/channels");
 
-export const create = (data: any) =>
+export const createChannel = (data: any) =>
   request("/analitika/channels", {
     method: "POST",
     body: JSON.stringify(data),
   });
 
-export const update = (id: number, data: any) =>
+export const updateChannel = (id: number, data: any) =>
   request(`/analitika/channels/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 
-export const remove = (id: number) =>
+export const deleteChannel = (id: number) =>
   request(`/analitika/channels/${id}`, {
     method: "DELETE",
   });
 
 export const channelsApi = {
-  getAll,
-  create,
-  update,
-  remove,
+  getChannels,
+  createChannel,
+  updateChannel,
+  deleteChannel,
 };
 

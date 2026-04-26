@@ -10,11 +10,10 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { authApi } from "../../src/services/api";
-import { API_BASE_URL } from "../../src/services/api/config";
+import { authApi } from "../../src/services/api/auth";
 
 import {
     colors,
@@ -81,9 +80,6 @@ export default function Login() {
 
                 {/* Blob lateral-izquierdo (pequeño, a media altura) */}
                 <View style={styles.blobMidLeft} />
-                <View>
-                    <Text>API: {API_BASE_URL}</Text>
-                </View>
                 {/* Logo oficial */}
                 <View style={styles.logoWrapper}>
                     <Image
@@ -99,6 +95,7 @@ export default function Login() {
                 <Text style={styles.title}>Inicio de Sesion</Text>
 
                 {/* Email */}
+                <Text style={styles.label}>Correo Electrónico</Text>
                 <TextInput
                     style={styles.input}
                     placeholder="Correo Electrónico"
@@ -111,6 +108,7 @@ export default function Login() {
                 />
 
                 {/* Contraseña */}
+                <Text style={styles.label}>Contraseña</Text>
                 <TextInput
                     style={styles.input}
                     placeholder="Contraseña"
@@ -235,6 +233,13 @@ const styles = StyleSheet.create({
         color: colors.primary,
         textAlign: "center",
         marginBottom: spacing.xxl,
+    },
+    label: {
+        fontSize: typography.sizeSm,
+        fontWeight: typography.semibold,
+        color: colors.primary,
+        marginBottom: spacing.xs,
+        marginLeft: spacing.xs,
     },
 
     input: {

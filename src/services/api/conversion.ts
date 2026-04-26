@@ -1,29 +1,29 @@
 import { request } from "./client";
 
-export const getAll = () =>
+export const getConversions = () =>
   request("/analitika/conversions");
 
-export const create = (data: any) =>
+export const createConversion = (data: any) =>
   request("/analitika/conversions", {
     method: "POST",
     body: JSON.stringify(data),
   });
 
-export const update = (id: number, data: any) =>
+export const updateConversion = (id: number, data: any) =>
   request(`/analitika/conversions/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 
-export const remove = (id: number) =>
+export const deleteConversion = (id: number) =>
   request(`/analitika/conversions/${id}`, {
     method: "DELETE",
   });
 
 export const conversionApi = {
-  getAll,
-  create,
-  update,
-  remove,
+  getConversions,
+  createConversion,
+  updateConversion,
+  deleteConversion,
 };
 

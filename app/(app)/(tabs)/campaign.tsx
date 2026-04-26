@@ -1,30 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
+    Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
-    ActivityIndicator,
-    Alert,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
     colors,
-    palette,
     radii,
-    shadows,
     spacing,
-    typography,
+    typography
 } from '../../../src/theme/colors';
 
-import { useCampaigns } from '../../../src/hooks/useCampaigns';
-import { trackingLinksApi } from '../../../src/services/api/tracking';
-import { trackingStatsApi } from '../../../src/services/api/stats';
-import { useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
+import { useLocalSearchParams } from 'expo-router';
+import { useCampaigns } from '../../../src/hooks/useCampaigns';
+import { trackingStatsApi } from '../../../src/services/api/stats';
+import { trackingLinksApi } from '../../../src/services/api/tracking';
 
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
@@ -73,7 +70,7 @@ export default function CampaignScreen() {
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Campañas</Text>
                 <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={{
                             width: 40,
                             height: 40,
@@ -81,8 +78,8 @@ export default function CampaignScreen() {
                             backgroundColor: colors.primary,
                             alignItems: 'center',
                             justifyContent: 'center',
-                        }} 
-                        activeOpacity={0.75} 
+                        }}
+                        activeOpacity={0.75}
                         onPress={() => router.push('/(app)/create')}
                     >
                         <Ionicons name="add" size={24} color={colors.bgPage} />
@@ -104,7 +101,7 @@ export default function CampaignScreen() {
                 {topCampaign && (
                     <View style={[styles.card, { backgroundColor: '#EDE9FE' }]}>
                         <Text style={[styles.cardTitle, { color: colors.textPrimary, marginBottom: spacing.md }]}>{topCampaign.name}</Text>
-                        
+
                         <TouchableOpacity style={styles.copyRow} onPress={() => copyLink(topCampaign.id_campaign)}>
                             <View style={styles.copyIconWrapper}>
                                 <Ionicons name="copy" size={16} color={colors.bgPage} />

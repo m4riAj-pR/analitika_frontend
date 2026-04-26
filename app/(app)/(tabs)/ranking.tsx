@@ -18,7 +18,7 @@ import {
   spacing,
   typography,
 } from '../../../src/theme/colors';
-import { useCampaignsTop } from '../../../src/hooks/UseCampaignsTop';
+import { useCampaignsTop } from '../../../src/hooks/useCampaignsTop';
 import type { TopCampaign } from '../../../src/services/api/types';
 
 // ─── Podium icon ──────────────────────────────────────────────────────────────

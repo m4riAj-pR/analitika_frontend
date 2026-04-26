@@ -1,11 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { authApi } from "../../src/services/api";
 import React, { useState } from "react";
 import {
+    ActivityIndicator,
     Alert,
+    Dimensions,
     Image,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     ScrollView,
     StyleSheet,
@@ -13,36 +15,39 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    ActivityIndicator,
-    Dimensions,
-    Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { authApi } from "../../src/services/api/auth";
 import {
     colors,
     palette,
     radii,
-    sharedStyles,
     spacing,
-    typography,
+    typography
 } from "../../src/theme/colors";
 
 const { height } = Dimensions.get('window');
 
 export default function Register() {
+    console.log("AUTH API DIRECT:", authApi);
     const insets = useSafeAreaInsets();
     const router = useRouter();
-
     const [nombres, setNombres] = useState("");
     const [apellidos, setApellidos] = useState("");
     const [empresa, setEmpresa] = useState("");
     const [email, setEmail] = useState("");
+    const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [loading, setLoading] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
 
     const handleRegister = async () => {
+        console.log("CLICK REGISTER");
+        console.log("FORM DATA", { nombres, apellidos, email, phone, password });
+        console.log("AUTH API", authApi);
+        console.log("AUTH REGISTER FN", authApi?.register);
+
         if (!nombres.trim()) {
             Alert.alert("Campo requerido", "Por favor ingresa tus Nombres.");
             return;
@@ -51,17 +56,21 @@ export default function Register() {
             Alert.alert("Campo requerido", "Por favor ingresa tus Apellidos.");
             return;
         }
+        if (!phone.trim()) {
+            Alert.alert("Campo requerido", "Por favor ingresa tu Teléfono.");
+            return;
+        }
         if (!email.trim()) {
             Alert.alert("Campo requerido", "Por favor ingresa tu Correo Electrónico.");
             return;
         }
-        
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email.trim())) {
             Alert.alert("Correo Inválido", "Por favor ingresa un correo electrónico válido.");
             return;
         }
-        
+
         if (!password.trim()) {
             Alert.alert("Campo requerido", "Por favor ingresa una Contraseña.");
             return;
@@ -78,21 +87,24 @@ export default function Register() {
             );
             return;
         }
-        
+
         try {
             setLoading(true);
-            await authApi.register({
+            const res = await authApi.register({
                 first_name: nombres,
                 last_name: apellidos,
                 email: email.trim(),
+                phone: phone.trim(),
+                company: empresa.trim(),
                 password,
-                phone: "0000000000", // Valor por defecto si no hay campo de teléfono
             });
+            console.log("REGISTER SUCCESS RESULT", res);
 
             Alert.alert("Registro Exitoso", "Tu cuenta ha sido creada correctamente.", [
                 { text: "OK", onPress: () => router.replace("/(auth)/login") }
             ]);
         } catch (error: any) {
+            console.log("ERROR COMPLETO", JSON.stringify(error, null, 2));
             Alert.alert("Error de registro", error.message || "Hubo un problema al crear tu cuenta.");
         } finally {
             setLoading(false);
@@ -138,7 +150,6 @@ export default function Register() {
                 >
                     <View style={styles.sheetHeader}>
                         <Text style={styles.title}>Crea tu Cuenta</Text>
-                        <Text style={styles.subtitle}>Únete a Analitika y optimiza tus campañas.</Text>
                     </View>
 
                     <View style={styles.form}>
@@ -168,9 +179,22 @@ export default function Register() {
                             />
                         </View>
 
+                        {/* Teléfono */}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Teléfono</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Tu número de teléfono"
+                                placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                                value={phone}
+                                onChangeText={setPhone}
+                                keyboardType="phone-pad"
+                            />
+                        </View>
+
                         {/* Empresa (opcional) */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Empresa <Text style={styles.optional}>(Opcional)</Text></Text>
+                            <Text style={styles.label}>Empresa <Text style={styles.optional}></Text></Text>
                             <TextInput
                                 style={styles.input}
                                 placeholder="Nombre de tu empresa"
@@ -222,10 +246,9 @@ export default function Register() {
                             </View>
                             <Text style={styles.checkboxLabel}>
                                 Acepto los{" "}
-                                <Text 
+                                <Text
                                     style={styles.checkboxLink}
-                                    onPress={(e) => {
-                                        e.stopPropagation();
+                                    onPress={() => {
                                         setShowTermsModal(true);
                                     }}
                                 >
@@ -322,7 +345,7 @@ const styles = StyleSheet.create({
 
     /* ── HEADER ── */
     header: {
-        height: height * 0.28,
+        height: height * 0.28 - 60,
         backgroundColor: colors.bgPage,
         justifyContent: "center",
         alignItems: "center",
@@ -343,8 +366,9 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     logoImage: {
-        width: 180,
-        height: 180,
+        width: 300,
+        height: 400,
+
     },
     backButton: {
         position: "absolute",
@@ -380,7 +404,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.xxl,
     },
     title: {
-        fontSize: typography.size2xl,
+        fontSize: typography.size4xl,
         fontWeight: typography.bold,
         color: colors.textPrimary,
         marginBottom: spacing.xs,

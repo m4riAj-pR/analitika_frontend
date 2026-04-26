@@ -8,7 +8,28 @@ export type ApiError = {
 
 // Puedes agregar aquí las interfaces para tus recursos si las conoces
 export interface Campaign {
-  id: number;
+  id_campaign: number | null;
+  id_company: number;
   name: string;
-  // ... otros campos
+  description: string | null;
+  status: string;
+  start_date: string | null;
+  end_date: string | null;
+  spent: number | string | null;
+}
+
+export interface TrackingLink {
+  id_link: number;
+  id_campaign: number;
+  original_url: string;
+  track_url: string;
+  created_at?: string;
+}
+
+export interface TopCampaign {
+  id_campaign: number;
+  name: string;
+  clicks: number;
+  conversions: number;
+  roi: number;
 }

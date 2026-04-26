@@ -15,7 +15,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { campaignsApi, trackingLinksApi } from '../../src/services/api';
+import { campaignsApi, trackingLinksApi, channelsApi } from '../../src/services/api';
+import { getUser } from '../../src/services/api/client';
 import {
   colors,
   palette,
@@ -114,9 +115,15 @@ export default function CreateCampaignScreen() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [canal, setCanal] = useState('');
-  const [showCanalModal, setShowCanalModal] = useState(false);
-  const canales = ['Instagram', 'Facebook', 'WhatsApp', 'TikTok', 'Email', 'Otro'];
+  const [status, setStatus] = useState('active');
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const statusOptions = ['active', 'paused', 'completed'];
+
+  const [idCompany, setIdCompany] = useState<number | null>(null);
+
+  // Datos del Canal (entidad separada)
+  const [channelName, setChannelName] = useState('');
+  const [channelDescription, setChannelDescription] = useState('');
 
   const [startDd, setStartDd] = useState('');
   const [startMm, setStartMm] = useState('');
@@ -126,43 +133,110 @@ export default function CreateCampaignScreen() {
   const [endMm, setEndMm] = useState('');
   const [endYyyy, setEndYyyy] = useState('');
 
-  const [budget, setBudget] = useState('');
-  const [returnExpected, setReturnExpected] = useState('');
-
+  const [spent, setSpent] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const loadData = async () => {
+      // 1. Obtener id_company del usuario logueado
+      const user = await getUser();
+      if (user && user.id_company) {
+        setIdCompany(Number(user.id_company));
+      }
+
+      // 2. Si es edición, cargar la campaña
+      if (campaignId) {
+        try {
+          setLoading(true);
+          const campaigns: any = await campaignsApi.list();
+          const camp = campaigns.find((c: any) => c.id_campaign === campaignId);
+          if (camp) {
+            setName(camp.name || '');
+            setDescription(camp.description || '');
+            setStatus(camp.status || 'active');
+            setSpent(camp.spent?.toString() || '');
+            
+            if (camp.start_date) {
+              const [y, m, d] = camp.start_date.split('-');
+              setStartYyyy(y); setStartMm(m); setStartDd(d);
+            }
+            if (camp.end_date) {
+              const [y, m, d] = camp.end_date.split('-');
+              setEndYyyy(y); setEndMm(m); setEndDd(d);
+            }
+          }
+        } catch (err) {
+          console.error("Error loading campaign:", err);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    loadData();
+  }, [campaignId]);
 
   const handleCreate = async () => {
     if (!name.trim()) {
       Alert.alert('Campo requerido', 'Ingresa el nombre de la campaña.');
       return;
     }
+    if (!idCompany) {
+      Alert.alert('Error', 'No se encontró la empresa asociada al usuario.');
+      return;
+    }
+
     try {
       setLoading(true);
-      const payload = {
+
+      const startDate = (startYyyy && startMm && startDd) 
+        ? `${startYyyy}-${startMm.padStart(2, '0')}-${startDd.padStart(2, '0')}`
+        : null;
+      
+      const endDate = (endYyyy && endMm && endDd)
+        ? `${endYyyy}-${endMm.padStart(2, '0')}-${endDd.padStart(2, '0')}`
+        : null;
+
+      // 1. Payload de Campaña
+      const campaignPayload = {
+        id_company: idCompany,
         name: name.trim(),
-        description: description.trim(),
-        canal: canal || undefined,
-        start_date: `${startYyyy || '2026'}-${(startMm || '01').padStart(2, '0')}-${(startDd || '01').padStart(2, '0')}`,
-        end_date: `${endYyyy || '2026'}-${(endMm || '01').padStart(2, '0')}-${(endDd || '01').padStart(2, '0')}`,
-        status: 'active' as const,
-        spent: Number(budget) || 0,
-        budget: Number(budget) || 0,
-        return_expected: Number(returnExpected) || 0,
+        description: description.trim() || null,
+        status: status,
+        start_date: startDate,
+        end_date: endDate,
+        spent: spent ? Number(spent) : null,
       };
 
+      // 2. Guardar Campaña
+      let createdCampaign: any = null;
       if (campaignId) {
-        await campaignsApi.update(campaignId, payload);
+        await campaignsApi.update(campaignId, campaignPayload);
       } else {
-        const created = await campaignsApi.create(payload);
-        if (created.id_campaign) {
-          try {
-            await trackingLinksApi.create({
-              id_campaign: created.id_campaign,
-              destination_url: 'https://ejemplo.com',
-            });
-          } catch {
-            // silencioso
-          }
+        createdCampaign = await campaignsApi.create(campaignPayload);
+      }
+
+      // 3. Payload de Canal
+      if (channelName.trim()) {
+        const channelPayload = {
+          name: channelName.trim(),
+          description: channelDescription.trim() || null,
+        };
+        try {
+          await channelsApi.createChannel(channelPayload);
+        } catch (channelErr) {
+          console.log("Error creating channel, continuing...", channelErr);
+        }
+      }
+
+      // 4. Crear link trackeable inicial
+      if (!campaignId && createdCampaign && createdCampaign.id_campaign) {
+        try {
+          await trackingLinksApi.create({
+            id_campaign: createdCampaign.id_campaign,
+            destination_url: 'https://analitika.com',
+          });
+        } catch (linkErr) {
+          console.log("Error creating initial link:", linkErr);
         }
       }
 
@@ -170,7 +244,7 @@ export default function CreateCampaignScreen() {
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo guardar la campaña.');
+      Alert.alert('Error', error.message || 'No se pudo completar la operación.');
     } finally {
       setLoading(false);
     }
@@ -230,47 +304,68 @@ export default function CreateCampaignScreen() {
           textAlignVertical="top"
         />
 
-        {/* Canal */}
+        {/* Estado */}
         <TouchableOpacity
           style={styles.selectorRow}
           activeOpacity={0.7}
-          onPress={() => setShowCanalModal(true)}
+          onPress={() => setShowStatusModal(true)}
         >
-          <Text style={[styles.selectorText, !canal && styles.placeholder]}>
-            {canal || 'Canal'}
+          <Text style={[styles.selectorText, !status && styles.placeholder]}>
+            {status || 'Estado'}
           </Text>
           <Ionicons name="chevron-forward" size={18} color={palette.purple3} />
         </TouchableOpacity>
 
-        {/* Modal selector de canal */}
-        <Modal visible={showCanalModal} transparent animationType="fade">
+        {/* Modal selector de estado */}
+        <Modal visible={showStatusModal} transparent animationType="fade">
           <TouchableOpacity
             style={styles.modalOverlay}
             activeOpacity={1}
-            onPress={() => setShowCanalModal(false)}
+            onPress={() => setShowStatusModal(false)}
           >
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Selecciona un Canal</Text>
-              {canales.map((c) => (
+              <Text style={styles.modalTitle}>Selecciona un Estado</Text>
+              {statusOptions.map((opt) => (
                 <TouchableOpacity
-                  key={c}
+                  key={opt}
                   style={styles.modalOption}
                   onPress={() => {
-                    setCanal(c);
-                    setShowCanalModal(false);
+                    setStatus(opt);
+                    setShowStatusModal(false);
                   }}
                 >
                   <Text style={[
                     styles.modalOptionText,
-                    canal === c && { color: colors.primary, fontWeight: typography.bold },
+                    status === opt && { color: colors.primary, fontWeight: typography.bold },
                   ]}>
-                    {c}
+                    {opt.charAt(0).toUpperCase() + opt.slice(1)}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
           </TouchableOpacity>
         </Modal>
+
+        {/* Datos del Canal */}
+        <View style={styles.divider} />
+        <Text style={styles.sectionTitle}>Datos del Canal (Opcional)</Text>
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Nombre del Canal (ej. Instagram)"
+          placeholderTextColor={palette.purple3}
+          value={channelName}
+          onChangeText={setChannelName}
+        />
+
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          placeholder="Descripción del Canal"
+          placeholderTextColor={palette.purple3}
+          value={channelDescription}
+          onChangeText={setChannelDescription}
+          multiline
+        />
 
         {/* Fecha inicio */}
         <DateGroup
@@ -286,11 +381,8 @@ export default function CreateCampaignScreen() {
           onDd={setEndDd} onMm={setEndMm} onYyyy={setEndYyyy}
         />
 
-        {/* Presupuesto */}
-        <MoneyInput label="Presupuesto" value={budget} onChange={setBudget} />
-
-        {/* Retorno Esperado */}
-        <MoneyInput label="Retorno Esperado" value={returnExpected} onChange={setReturnExpected} />
+        {/* Gasto */}
+        <MoneyInput label="Gasto acumulado" value={spent} onChange={setSpent} />
 
         {/* Generar Link Trackeable */}
         <View style={styles.fieldGroup}>
@@ -483,6 +575,20 @@ const styles = StyleSheet.create({
     color: colors.textOnPrimary,
     fontSize: typography.sizeLg,
     fontWeight: typography.bold,
+  },
+
+  /* Section spacing */
+  divider: {
+    height: 1,
+    backgroundColor: colors.borderDivider,
+    marginVertical: spacing.lg,
+    opacity: 0.5,
+  },
+  sectionTitle: {
+    fontSize: typography.sizeLg,
+    fontWeight: typography.bold,
+    color: colors.primary,
+    marginBottom: spacing.xs,
   },
 
   /* Modal */
