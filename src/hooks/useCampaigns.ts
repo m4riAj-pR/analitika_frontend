@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as Service from '../services/api/campaign';
+import { campaignsApi } from '../services/api/campaign';
 import { Campaign } from '../services/api/types';
 
 export function useCampaigns() {
@@ -11,7 +11,9 @@ export function useCampaigns() {
         try {
             setLoading(true);
             setError(null);
-            const response: any = await Service.list();
+            console.log("LOADING CAMPAIGNS");
+            const response: any = await campaignsApi.getAll();
+            console.log("CAMPAIGNS RESPONSE:", response);
             setCampaigns(response || []);
         } catch (err: any) {
             console.error('Error fetching campaigns:', err);
@@ -28,6 +30,3 @@ export function useCampaigns() {
 
     return { campaigns, loading, error, reload: fetchAll };
 }
-
-
-

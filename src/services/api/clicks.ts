@@ -21,9 +21,12 @@ export const deleteClick = (id: number) =>
   });
 
 export const clicksApi = {
+  getAll: getClicks,
   getClicks,
   createClick,
   updateClick,
   deleteClick,
 };
+
+export const getAll = getClicks;
 

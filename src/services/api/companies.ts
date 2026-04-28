@@ -21,9 +21,12 @@ export const deleteCompany = (id: number) =>
   });
 
 export const companiesApi = {
+  getAll: getCompanies,
   getCompanies,
   createCompany,
   updateCompany,
   deleteCompany,
 };
+
+export const getAll = getCompanies;
 

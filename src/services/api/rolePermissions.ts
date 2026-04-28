@@ -1,29 +1,27 @@
 import { request } from "./client";
 
+const BASE = "/analitika/role-permissions";
+
 export const getRolePermissions = () =>
-  request("/analitika/role-permissions");
+  request(BASE);
 
 export const createRolePermission = (data: any) =>
-  request("/analitika/role-permissions", {
+  request(BASE, {
     method: "POST",
     body: JSON.stringify(data),
   });
 
-export const updateRolePermission = (id: number, data: any) =>
-  request(`/analitika/role-permissions/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
-
-export const deleteRolePermission = (id: number) =>
-  request(`/analitika/role-permissions/${id}`, {
+// Note: Backend only has GET, POST, DELETE for role-permissions (no PUT)
+export const deleteRolePermission = (id: number | string) =>
+  request(`${BASE}/${id}`, {
     method: "DELETE",
   });
 
 export const rolePermissionsApi = {
+  getAll: getRolePermissions,
   getRolePermissions,
   createRolePermission,
-  updateRolePermission,
   deleteRolePermission,
 };
 
+export const getAll = getRolePermissions;

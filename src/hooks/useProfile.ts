@@ -13,8 +13,8 @@ export function useProfile() {
             setLoading(true);
             setError(null);
             const response: any = await authService.me();
-            // Asumiendo que la respuesta viene envuelta en .response
-            setProfile(response.response || response);
+            // Asumiendo que la respuesta puede venir envuelta en .response
+            setProfile(response?.response || response);
         } catch (err: any) {
             console.error('Error fetching profile:', err);
             setError(err.message || 'Error al cargar perfil');
@@ -31,7 +31,7 @@ export function useProfile() {
                 throw new Error("No se pudo encontrar el ID del usuario para actualizar.");
             }
             const response: any = await userService.updateProfile(userId, data);
-            const updated = response.response || response;
+            const updated = response?.response || response;
             setProfile(updated);
             return updated;
         } catch (err: any) {

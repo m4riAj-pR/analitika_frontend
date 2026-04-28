@@ -21,9 +21,12 @@ export const deletePermission = (id: number) =>
   });
 
 export const permissionsApi = {
+  getAll: getPermissions,
   getPermissions,
   createPermission,
   updatePermission,
   deletePermission,
 };
+
+export const getAll = getPermissions;
 

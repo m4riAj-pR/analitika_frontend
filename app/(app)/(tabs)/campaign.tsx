@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     ScrollView,
     StyleSheet,
@@ -31,12 +32,14 @@ export default function CampaignScreen() {
     const params = useLocalSearchParams();
     const { campaigns, loading, reload } = useCampaigns();
 
+    console.log("LOADING CAMPAIGNS");
+
     // Leer id_link y registrar
     useEffect(() => {
         if (params.id_link) {
             const id_link = Number(params.id_link);
             if (!isNaN(id_link)) {
-                trackingStatsApi.registrarClick(id_link).catch(err => console.log('Error registrando click', err));
+                trackingStatsApi.registrarClick({ id_link }).catch(err => console.log('Error registrando click', err));
             }
         }
     }, [params.id_link]);
@@ -46,7 +49,13 @@ export default function CampaignScreen() {
     const activeCampaigns = campaigns.filter(c => c.status === 'active');
     const inactiveCampaigns = campaigns.filter(c => c.status !== 'active');
 
-    const copyLink = async (id_campaign: number) => {
+    console.log("CAMPAIGNS RESPONSE:", campaigns);
+
+    const copyLink = async (id_campaign: number | null) => {
+        if (id_campaign === null) {
+            Alert.alert('Error', 'Campaña no tiene id válido');
+            return;
+        }
         try {
             const links = await trackingLinksApi.listByCampaign(id_campaign);
             if (links && links.length > 0) {
@@ -90,6 +99,12 @@ export default function CampaignScreen() {
                 </View>
             </View>
 
+            {loading ? (
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 }}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={{ marginTop: 10, color: colors.textSecondary }}>Cargando campañas…</Text>
+                </View>
+            ) : (
             <ScrollView
                 contentContainerStyle={[
                     styles.scrollContent,
@@ -141,6 +156,7 @@ export default function CampaignScreen() {
                     ))}
                 </View>
             </ScrollView>
+            )}
         </View>
     );
 }

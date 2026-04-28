@@ -132,13 +132,15 @@ export default function DashboardScreen() {
 
   // 1️⃣ Cargar lista de campañas
   useEffect(() => {
+    console.log("LOADING CAMPAIGNS");
     campaignsApi
-      .list()
-      .then((data) => {
+      .getAll()
+      .then((data: any) => {
+        console.log("CAMPAIGNS RESPONSE:", data);
         setCampaigns(data || []);
         setSelectedCampaign(null);
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error("Error loading campaigns:", err);
         setCampaigns([]);
         setSelectedCampaign(null);
@@ -148,6 +150,10 @@ export default function DashboardScreen() {
 
   // 2️⃣ Cargar estadísticas de la campaña seleccionada
   const fetchStats = useCallback(async (campaign: Campaign) => {
+    if (campaign.id_campaign == null) {
+      setStatsError(true);
+      return;
+    }
     setLoadingStats(true);
     setStatsError(false);
 

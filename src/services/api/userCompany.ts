@@ -1,29 +1,27 @@
 import { request } from "./client";
 
+const BASE = "/analitika/user-company";
+
 export const getUserCompanies = () =>
-  request("/analitika/user-company");
+  request(BASE);
 
 export const createUserCompany = (data: any) =>
-  request("/analitika/user-company", {
+  request(BASE, {
     method: "POST",
     body: JSON.stringify(data),
   });
 
-export const updateUserCompany = (id: number, data: any) =>
-  request(`/analitika/user-company/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
-
-export const deleteUserCompany = (id: number) =>
-  request(`/analitika/user-company/${id}`, {
+// Note: Backend only has GET, POST, DELETE for user-company (no PUT)
+export const deleteUserCompany = (id: number | string) =>
+  request(`${BASE}/${id}`, {
     method: "DELETE",
   });
 
 export const userCompanyApi = {
+  getAll: getUserCompanies,
   getUserCompanies,
   createUserCompany,
-  updateUserCompany,
   deleteUserCompany,
 };
 
+export const getAll = getUserCompanies;

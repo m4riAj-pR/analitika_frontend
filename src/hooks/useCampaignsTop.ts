@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { statsApi } from '../services/api/stats';
+import { campaignsApi } from '../services/api/campaign';
 import { TopCampaign } from '../services/api/types';
 
-export function useCampaignsTop(start_date: string, end_date: string) {
+/**
+ * Hook to fetch top campaigns from GET /analitika/campaigns/top.
+ * The start_date/end_date params are kept for API compatibility 
+ * but the actual endpoint may not use them.
+ */
+export function useCampaignsTop(_start_date?: string, _end_date?: string) {
     const [campaigns, setCampaigns] = useState<TopCampaign[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -11,9 +16,10 @@ export function useCampaignsTop(start_date: string, end_date: string) {
         try {
             setLoading(true);
             setError(null);
-            const response: any = await statsApi.getRanking(start_date, end_date);
-            // Assuming the response is the array or has a property containing it
-            setCampaigns(response || []);
+            console.log("LOADING TOP CAMPAIGNS");
+            const response: any = await campaignsApi.getTop();
+            console.log("TOP CAMPAIGNS RESPONSE:", response);
+            setCampaigns(Array.isArray(response) ? response : []);
         } catch (err: any) {
             console.error('Error fetching top campaigns:', err);
             setError(err.message || 'Error al cargar el ranking');
@@ -21,7 +27,7 @@ export function useCampaignsTop(start_date: string, end_date: string) {
         } finally {
             setLoading(false);
         }
-    }, [start_date, end_date]);
+    }, []);
 
     useEffect(() => {
         fetchRanking();

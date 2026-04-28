@@ -21,9 +21,12 @@ export const deletePerson = (id: number) =>
   });
 
 export const personsApi = {
+  getAll: getPersons,
   getPersons,
   createPerson,
   updatePerson,
   deletePerson,
 };
+
+export const getAll = getPersons;
 

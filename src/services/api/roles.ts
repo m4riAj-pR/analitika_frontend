@@ -21,9 +21,12 @@ export const deleteRole = (id: number) =>
   });
 
 export const rolesApi = {
+  getAll: getRoles,
   getRoles,
   createRole,
   updateRole,
   deleteRole,
 };
+
+export const getAll = getRoles;
 

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -198,7 +198,7 @@ export default function CreateCampaignScreen() {
 
       // 1. Payload de Campaña
       const campaignPayload = {
-        id_company: idCompany,
+        id_company: Number(idCompany),
         name: name.trim(),
         description: description.trim() || null,
         status: status,
@@ -206,6 +206,7 @@ export default function CreateCampaignScreen() {
         end_date: endDate,
         spent: spent ? Number(spent) : null,
       };
+      console.log("CREATE CAMPAIGN PAYLOAD:", campaignPayload);
 
       // 2. Guardar Campaña
       let createdCampaign: any = null;
@@ -244,6 +245,7 @@ export default function CreateCampaignScreen() {
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error: any) {
+      console.log("CREATE CAMPAIGN ERROR:", error);
       Alert.alert('Error', error.message || 'No se pudo completar la operación.');
     } finally {
       setLoading(false);

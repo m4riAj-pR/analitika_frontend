@@ -268,7 +268,7 @@ export default function Register() {
                             {loading ? (
                                 <ActivityIndicator color={colors.textOnPrimary} />
                             ) : (
-                                <Text style={styles.registerButtonText}>Crear cuenta ahora</Text>
+                                <Text style={styles.registerButtonText}>Registrarse</Text>
                             )}
                         </TouchableOpacity>
 

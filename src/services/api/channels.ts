@@ -21,9 +21,12 @@ export const deleteChannel = (id: number) =>
   });
 
 export const channelsApi = {
+  getAll: getChannels,
   getChannels,
   createChannel,
   updateChannel,
   deleteChannel,
 };
+
+export const getAll = getChannels;
 
