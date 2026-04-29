@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Dimensions,
   FlatList,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,8 +16,8 @@ import { LineChart } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { campaignsApi } from '../../../src/services/api/campaign';
 import { getClicsPorDia, getMetricas, getTablaClic } from '../../../src/services/api/stats';
-import { colors, palette, radii, shadows, spacing, typography } from '../../../src/theme/colors';
 import type { Campaign } from '../../../src/services/api/types';
+import { colors, palette, radii, shadows, spacing, typography } from '../../../src/theme/colors';
 
 const { width } = Dimensions.get('window');
 
@@ -29,14 +30,22 @@ const formatCurrency = (value: number) =>
 
 // ─── Header Component ────────────────────────────────────────────────────────
 function Header() {
+  const router = useRouter();
   return (
     <View style={styles.headerContainer}>
       <View style={styles.logoWrapper}>
-        <View style={styles.logoBlob} />
-        <Text style={styles.logoText}>Analitika</Text>
+        <Image
+          source={require('../../../assets/images/icon.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
       </View>
-      <TouchableOpacity style={styles.profileButton} activeOpacity={0.7}>
-        <Ionicons name="person-circle" size={42} color={palette.purple3} />
+      <TouchableOpacity
+        style={styles.profileButton}
+        activeOpacity={0.7}
+        onPress={() => router.push('/(app)/(tabs)/account')}
+      >
+        <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
       </TouchableOpacity>
     </View>
   );
@@ -435,28 +444,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
-    height: 70,
+    height: 80,
   },
   logoWrapper: {
     position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: -5,
   },
-  logoBlob: {
-    position: 'absolute',
-    left: -10,
-    top: -10,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: palette.purple3,
-    opacity: 0.3,
-  },
-  logoText: {
-    fontSize: 26,
-    fontWeight: typography.bold,
-    color: colors.primary,
-    marginLeft: 5,
+  logoImage: {
+    width: 190,
+    height: 190,
   },
   profileButton: {
     padding: 2,

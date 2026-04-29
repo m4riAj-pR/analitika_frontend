@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useProfile } from '../../../src/hooks/useProfile';
 import { authApi } from '../../../src/services/api/auth';
 import { removeToken } from '../../../src/services/api/client';
+import { companiesApi } from '../../../src/services/api/companies';
 import { colors, palette, radii, shadows, spacing, typography } from '../../../src/theme/colors';
 
 export default function AccountScreen() {
@@ -25,6 +26,8 @@ export default function AccountScreen() {
   const { profile, loading, saving, updateProfile } = useProfile();
 
   const [isEditing, setIsEditing] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [companyLoading, setCompanyLoading] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -40,6 +43,35 @@ export default function AccountScreen() {
       });
     }
   }, [profile]);
+
+  useEffect(() => {
+    const loadCompany = async () => {
+      const companyId = Number(profile?.id_company);
+
+      if (!companyId) {
+        setCompanyName('Empresa no encontrada');
+        return;
+      }
+
+      try {
+        setCompanyLoading(true);
+        const response: any = await companiesApi.getAll();
+        const companies = Array.isArray(response)
+          ? response
+          : response?.response || [];
+
+        const company = companies.find((item: any) => Number(item.id_company) === companyId);
+        setCompanyName(company?.name || 'Empresa no encontrada');
+      } catch (error) {
+        console.log('Error loading company for account:', error);
+        setCompanyName('Empresa no encontrada');
+      } finally {
+        setCompanyLoading(false);
+      }
+    };
+
+    loadCompany();
+  }, [profile?.id_company]);
 
   const handleLogout = () => {
     Alert.alert('Cerrar sesión', '¿Seguro que quieres salir?', [
@@ -58,7 +90,11 @@ export default function AccountScreen() {
 
   const handleSave = async () => {
     try {
-      await updateProfile(formData);
+      await updateProfile({
+        first_name: formData.first_name.trim(),
+        last_name: formData.last_name.trim(),
+        phone: formData.phone.trim(),
+      });
       setIsEditing(false);
       Alert.alert('Éxito', 'Perfil actualizado correctamente');
     } catch (err) {
@@ -152,6 +188,15 @@ export default function AccountScreen() {
               />
             </View>
 
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Empresa <Text style={styles.readOnlyText}>(Solo lectura)</Text></Text>
+              <TextInput
+                style={[styles.input, styles.inputDisabled]}
+                value={companyLoading ? 'Cargando...' : companyName || 'Empresa no encontrada'}
+                editable={false}
+              />
+            </View>
+
             <View style={styles.formActions}>
               <TouchableOpacity
                 style={styles.cancelBtn}
@@ -199,6 +244,18 @@ export default function AccountScreen() {
               <View>
                 <Text style={styles.infoLabel}>Teléfono</Text>
                 <Text style={styles.infoValue}>{profile?.phone || 'No registrado'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.infoRow}>
+              <View style={styles.infoIconBox}>
+                <Ionicons name="business" size={20} color={colors.primary} />
+              </View>
+              <View>
+                <Text style={styles.infoLabel}>Empresa</Text>
+                <Text style={styles.infoValue}>
+                  {companyLoading ? 'Cargando...' : companyName || 'Empresa no encontrada'}
+                </Text>
               </View>
             </View>
           </View>

@@ -45,9 +45,13 @@ export default function CampaignScreen() {
     }, [params.id_link]);
 
     // Filtrar campañas
-    const topCampaign = campaigns.length > 0 ? campaigns[0] : null;
-    const activeCampaigns = campaigns.filter(c => c.status === 'active');
-    const inactiveCampaigns = campaigns.filter(c => c.status !== 'active');
+    const topCampaign = Array.isArray(campaigns) && campaigns.length > 0 ? campaigns[0] : null;
+    const activeCampaigns = Array.isArray(campaigns)
+        ? campaigns.filter(c => String(c.status).toLowerCase() === 'active')
+        : [];
+    const inactiveCampaigns = Array.isArray(campaigns)
+        ? campaigns.filter(c => String(c.status).toLowerCase() !== 'active')
+        : [];
 
     console.log("CAMPAIGNS RESPONSE:", campaigns);
 
@@ -71,6 +75,11 @@ export default function CampaignScreen() {
     };
 
 
+    // Ensure we reload campaigns when this screen mounts (helps after creating a campaign)
+    React.useEffect(() => {
+        reload();
+    }, [reload]);
+
     // handleCreateCampaign fue eliminado ya que "Create" es un Tab manejado por customtabbar.tsx
 
     return (
@@ -93,7 +102,11 @@ export default function CampaignScreen() {
                     >
                         <Ionicons name="add" size={24} color={colors.bgPage} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.avatarBtn} activeOpacity={0.75}>
+                    <TouchableOpacity
+                        style={styles.avatarBtn}
+                        activeOpacity={0.75}
+                        onPress={() => router.push('/(app)/(tabs)/account')}
+                    >
                         <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
                     </TouchableOpacity>
                 </View>

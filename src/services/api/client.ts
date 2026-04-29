@@ -16,6 +16,7 @@ async function getToken() {
 }
 
 export const USER_KEY = 'analitika_user';
+export const CURRENT_USER_KEY = 'current_user';
 
 export async function saveToken(token: string) {
   memoryToken = token;
@@ -27,11 +28,17 @@ export async function saveToken(token: string) {
 export async function saveUser(user: any) {
   try {
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+    await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
   } catch { }
 }
 
 export async function getUser() {
   try {
+    const currentUser = await AsyncStorage.getItem(CURRENT_USER_KEY);
+    if (currentUser) {
+      return JSON.parse(currentUser);
+    }
+
     const user = await AsyncStorage.getItem(USER_KEY);
     return user ? JSON.parse(user) : null;
   } catch {
@@ -44,6 +51,7 @@ export async function removeToken() {
   try {
     await AsyncStorage.removeItem(TOKEN_KEY);
     await AsyncStorage.removeItem(USER_KEY);
+    await AsyncStorage.removeItem(CURRENT_USER_KEY);
   } catch { }
 }
 

@@ -14,7 +14,7 @@ const getIconName = (routeName: string) => {
     case 'ranking':
       return 'podium';
     case 'account':
-      return 'person';
+      return 'person-circle-outline';
     default:
       return 'ellipse';
   }

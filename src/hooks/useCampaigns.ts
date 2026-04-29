@@ -14,7 +14,9 @@ export function useCampaigns() {
             console.log("LOADING CAMPAIGNS");
             const response: any = await campaignsApi.getAll();
             console.log("CAMPAIGNS RESPONSE:", response);
-            setCampaigns(response || []);
+            const data = Array.isArray(response) ? response : response?.response || [];
+            console.log("PARSED CAMPAIGNS:", data);
+            setCampaigns(data);
         } catch (err: any) {
             console.error('Error fetching campaigns:', err);
             setError(err.message || 'Error al cargar campañas');

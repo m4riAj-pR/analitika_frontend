@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { campaignsApi, trackingLinksApi, channelsApi } from '../../src/services/api';
+import { campaignsApi, channelsApi, trackingLinksApi } from '../../src/services/api';
 import { getUser } from '../../src/services/api/client';
 import {
   colors,
@@ -135,9 +135,11 @@ export default function CreateCampaignScreen() {
 
   const [spent, setSpent] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
+      setSessionLoading(true);
       // 1. Obtener id_company del usuario logueado
       const user = await getUser();
       if (user && user.id_company) {
@@ -171,6 +173,8 @@ export default function CreateCampaignScreen() {
           setLoading(false);
         }
       }
+
+      setSessionLoading(false);
     };
     loadData();
   }, [campaignId]);
@@ -180,7 +184,17 @@ export default function CreateCampaignScreen() {
       Alert.alert('Campo requerido', 'Ingresa el nombre de la campaña.');
       return;
     }
-    if (!idCompany) {
+
+    let companyId = idCompany;
+    if (!companyId) {
+      const user = await getUser();
+      companyId = user?.id_company ? Number(user.id_company) : null;
+      if (companyId) {
+        setIdCompany(companyId);
+      }
+    }
+
+    if (!companyId) {
       Alert.alert('Error', 'No se encontró la empresa asociada al usuario.');
       return;
     }
@@ -198,7 +212,7 @@ export default function CreateCampaignScreen() {
 
       // 1. Payload de Campaña
       const campaignPayload = {
-        id_company: Number(idCompany),
+        id_company: Number(companyId),
         name: name.trim(),
         description: description.trim() || null,
         status: status,
@@ -271,7 +285,11 @@ export default function CreateCampaignScreen() {
           {name.trim() ? name : `Nombre de la\ncampaña`}
         </Text>
 
-        <TouchableOpacity style={styles.avatarBtn} activeOpacity={0.75}>
+        <TouchableOpacity
+          style={styles.avatarBtn}
+          activeOpacity={0.75}
+          onPress={() => router.push('/(app)/(tabs)/account')}
+        >
           <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -285,6 +303,12 @@ export default function CreateCampaignScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {sessionLoading && (
+          <View style={{ marginBottom: spacing.md }}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        )}
+
         {/* Nombre */}
         <TextInput
           style={styles.input}
@@ -397,7 +421,7 @@ export default function CreateCampaignScreen() {
           style={[styles.createButton, loading && { opacity: 0.7 }]}
           activeOpacity={0.85}
           onPress={handleCreate}
-          disabled={loading}
+          disabled={loading || sessionLoading}
         >
           {loading ? (
             <ActivityIndicator color={colors.textOnPrimary} />
