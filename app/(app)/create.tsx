@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { campaignsApi, channelsApi, trackingLinksApi } from '../../src/services/api';
 import { getUser } from '../../src/services/api/client';
+import { CAMPAIGN_STATUS } from '../../src/services/api/types';
 import {
   colors,
   palette,
@@ -117,7 +118,7 @@ export default function CreateCampaignScreen() {
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('active');
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const statusOptions = ['draft', 'active', 'paused', 'finished'];
+  const statusOptions = CAMPAIGN_STATUS;
 
   const [idCompany, setIdCompany] = useState<number | null>(null);
 
@@ -246,9 +247,13 @@ export default function CreateCampaignScreen() {
       // 4. Crear link trackeable inicial
       if (!campaignId && createdCampaign && createdCampaign.id_campaign) {
         try {
+          const destination = 'https://analitika.com';
+          if (!destination) {
+            console.warn('Advertencia: El campo destination está vacío al crear el tracking link.');
+          }
           await trackingLinksApi.create({
             id_campaign: createdCampaign.id_campaign,
-            destination: 'https://analitika.com',
+            destination: destination,
           });
         } catch (linkErr) {
           console.log("Error creating initial link:", linkErr);

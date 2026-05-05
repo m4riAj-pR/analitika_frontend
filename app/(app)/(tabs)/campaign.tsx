@@ -19,9 +19,8 @@ import {
 } from '../../../src/theme/colors';
 
 import * as Clipboard from 'expo-clipboard';
-import { useLocalSearchParams } from 'expo-router';
 import { useCampaigns } from '../../../src/hooks/useCampaigns';
-import { trackingStatsApi } from '../../../src/services/api/stats';
+// trackingStatsApi eliminado: /c/{id_link} registra clicks automáticamente
 import { trackingLinksApi } from '../../../src/services/api/tracking';
 
 
@@ -29,20 +28,12 @@ import { trackingLinksApi } from '../../../src/services/api/tracking';
 export default function CampaignScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const params = useLocalSearchParams();
     const { campaigns, loading, reload } = useCampaigns();
 
     console.log("LOADING CAMPAIGNS");
 
-    // Leer id_link y registrar
-    useEffect(() => {
-        if (params.id_link) {
-            const id_link = Number(params.id_link);
-            if (!isNaN(id_link)) {
-                trackingStatsApi.registrarClick({ id_link }).catch(err => console.log('Error registrando click', err));
-            }
-        }
-    }, [params.id_link]);
+    // Los clicks se registran automáticamente en el backend cuando el usuario
+    // accede al link /c/{id_link}. No es necesario registrarlos manualmente.
 
     // Filtrar campañas
     const topCampaign = Array.isArray(campaigns) && campaigns.length > 0 ? campaigns[0] : null;
@@ -63,7 +54,13 @@ export default function CampaignScreen() {
         try {
             const links = await trackingLinksApi.listByCampaign(id_campaign);
             if (links && links.length > 0) {
-                const trackUrl = trackingLinksApi.publicTrackUrl(links[0].id_link);
+                const id_link = links[0].id_link;
+                if (!id_link || isNaN(Number(id_link))) {
+                    console.warn('Invalid tracking id:', id_link);
+                    Alert.alert('Error', 'El link trackeable tiene un ID inválido.');
+                    return;
+                }
+                const trackUrl = trackingLinksApi.publicTrackUrl(Number(id_link));
                 await Clipboard.setStringAsync(trackUrl);
                 Alert.alert('¡Copiado!', 'El link trackeable ha sido copiado al portapapeles.');
             } else {
