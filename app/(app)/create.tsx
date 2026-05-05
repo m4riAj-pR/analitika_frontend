@@ -117,7 +117,7 @@ export default function CreateCampaignScreen() {
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('active');
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const statusOptions = ['active', 'paused', 'completed'];
+  const statusOptions = ['draft', 'active', 'paused', 'finished'];
 
   const [idCompany, setIdCompany] = useState<number | null>(null);
 
@@ -248,7 +248,7 @@ export default function CreateCampaignScreen() {
         try {
           await trackingLinksApi.create({
             id_campaign: createdCampaign.id_campaign,
-            destination_url: 'https://analitika.com',
+            destination: 'https://analitika.com',
           });
         } catch (linkErr) {
           console.log("Error creating initial link:", linkErr);

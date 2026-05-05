@@ -10,8 +10,8 @@ export function useChannels() {
         try {
             setLoading(true);
             setError(null);
-            const response: any = await Service.getAll();
-            setChannels(response.response || []);
+            const raw: any = await Service.getAll();
+            setChannels(Array.isArray(raw) ? raw : raw?.response || []);
         } catch (err: any) {
             console.error('Error fetching channels:', err);
             setError(err.message || 'Error al cargar canales');

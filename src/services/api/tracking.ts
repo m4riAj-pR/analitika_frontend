@@ -26,7 +26,7 @@ export const deleteTrackingLink = (id: number | string) =>
   });
 
 export const publicTrackUrl = (id: number) =>
-  `https://analitika-production.up.railway.app/track/${id}`;
+  `https://analitika-production.up.railway.app/c/${id}`;
 
 export const trackingLinksApi = {
   getAll: getTrackingLinks,

@@ -21,8 +21,8 @@ export interface Campaign {
 export interface TrackingLink {
   id_link: number;
   id_campaign: number;
-  original_url: string;
-  track_url: string;
+  id_channel?: number | null;
+  destination: string;
   created_at?: string;
 }
 

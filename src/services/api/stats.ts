@@ -1,21 +1,17 @@
 import { request } from "./client";
 
-
-// These endpoints may not exist yet on the backend — kept as stubs
+// Endpoints de estadísticas alineados con el backend
 export const getMetricas = (id_campaign: number) =>
-  request(`/analitika/clicks?campaign_id=${id_campaign}`);
+  request(`/stats/${id_campaign}`);
 
 export const getClicsPorDia = (id_campaign: number) =>
-  request(`/analitika/clicks?campaign_id=${id_campaign}`);
+  request(`/stats/${id_campaign}/clics-por-dia`);
 
 export const getTablaClic = (id_campaign: number) =>
-  request(`/analitika/clicks?campaign_id=${id_campaign}`);
+  request(`/stats/${id_campaign}/tabla-clics`);
 
-export const registrarClick = (data: any) =>
-  request("/analitika/clicks", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+// NOTA: No usar registrarClick manualmente; el endpoint /c/{id} ya registra
+// el click automáticamente al redirigir.
 
 export const statsApi = {
   getMetricas,
@@ -25,6 +21,5 @@ export const statsApi = {
 
 export const trackingStatsApi = {
   getStats: getMetricas,
-  registrarClick,
   ...statsApi,
 };

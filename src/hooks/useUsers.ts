@@ -10,8 +10,8 @@ export function useUsers() {
         try {
             setLoading(true);
             setError(null);
-            const response: any = await Service.getAll();
-            setUsers(response.response || []);
+            const raw: any = await Service.getAll();
+            setUsers(Array.isArray(raw) ? raw : raw?.response || []);
         } catch (err: any) {
             console.error('Error fetching users:', err);
             setError(err.message || 'Error al cargar usuarios');

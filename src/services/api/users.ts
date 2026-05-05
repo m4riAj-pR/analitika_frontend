@@ -1,22 +1,22 @@
 import { request } from "./client";
 
 export const getUsers = () =>
-  request("/analitika/persons");
+  request("/analitika/users");
 
 export const createUser = (data: any) =>
-  request("/analitika/persons", {
+  request("/analitika/users", {
     method: "POST",
     body: JSON.stringify(data),
   });
 
 export const updateUser = (id: number, data: any) =>
-  request(`/analitika/persons/${id}`, {
+  request(`/analitika/users/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 
 export const deleteUser = (id: number) =>
-  request(`/analitika/persons/${id}`, {
+  request(`/analitika/users/${id}`, {
     method: "DELETE",
   });
 
