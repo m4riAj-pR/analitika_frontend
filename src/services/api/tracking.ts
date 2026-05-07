@@ -1,5 +1,6 @@
 import { request } from "./client";
 import { TrackingLink } from "./types";
+import { API_BASE_URL } from "./config";
 
 const BASE = "/analitika/tracking-links";
 
@@ -26,16 +27,14 @@ export const deleteTrackingLink = (id: number | string) =>
   });
 
 export const publicTrackUrl = (id: number) =>
-  `https://analitika-production.up.railway.app/c/${id}`;
+  `${API_BASE_URL}/c/${id}`;
 
 export const trackingLinksApi = {
   getAll: getTrackingLinks,
   getTrackingLinks,
   listByCampaign,
   create: createTrackingLink,
-  createTrackingLink,
   update: updateTrackingLink,
-  updateTrackingLink,
   remove: deleteTrackingLink,
   deleteTrackingLink,
   publicTrackUrl,

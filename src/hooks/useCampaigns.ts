@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import { campaignsApi } from '../services/api/campaign';
 import { Campaign } from '../services/api/types';
+import { useProfile } from './useProfile';
 
 export function useCampaigns() {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { profile } = useProfile();
 
     const fetchAll = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            console.log("LOADING CAMPAIGNS");
+            // CORRECCIÓN 2: no pasar id_company — el backend filtra por usuario autenticado
             const response: any = await campaignsApi.getAll();
-            console.log("CAMPAIGNS RESPONSE:", response);
             const data = Array.isArray(response) ? response : response?.response || [];
-            console.log("PARSED CAMPAIGNS:", data);
             setCampaigns(data);
         } catch (err: any) {
             console.error('Error fetching campaigns:', err);
@@ -27,8 +27,11 @@ export function useCampaigns() {
     }, []);
 
     useEffect(() => {
-        fetchAll();
-    }, [fetchAll]);
+        // CORRECCIÓN 2: cargar siempre que haya un perfil autenticado, con o sin empresa
+        if (profile) {
+            fetchAll();
+        }
+    }, [profile?.id_user, fetchAll]);
 
     return { campaigns, loading, error, reload: fetchAll };
 }

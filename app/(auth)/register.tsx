@@ -60,6 +60,10 @@ export default function Register() {
             Alert.alert("Campo requerido", "Por favor ingresa tu Teléfono.");
             return;
         }
+        if (!empresa.trim()) {
+            Alert.alert("Campo requerido", "Por favor ingresa el nombre de tu Empresa.");
+            return;
+        }
         if (!email.trim()) {
             Alert.alert("Campo requerido", "Por favor ingresa tu Correo Electrónico.");
             return;
@@ -192,9 +196,9 @@ export default function Register() {
                             />
                         </View>
 
-                        {/* Empresa (opcional) */}
+                        {/* Empresa */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Empresa <Text style={styles.optional}></Text></Text>
+                            <Text style={styles.label}>Empresa</Text>
                             <TextInput
                                 style={styles.input}
                                 placeholder="Nombre de tu empresa"

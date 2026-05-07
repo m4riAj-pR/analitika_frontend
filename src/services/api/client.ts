@@ -5,6 +5,7 @@ import type { ApiError } from './types';
 
 
 let memoryToken: string | null = null;
+let memoryUser: any = null;
 
 async function getToken() {
   try {
@@ -26,10 +27,14 @@ export async function saveToken(token: string) {
 }
 
 export async function saveUser(user: any) {
+  memoryUser = user;
   try {
+    console.log("GUARDANDO USUARIO EN CACHE:", user);
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
     await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-  } catch { }
+  } catch (err) {
+    console.error("Error guardando usuario (usando memoria RAM temporal):", err);
+  }
 }
 
 export async function getUser() {
@@ -40,18 +45,17 @@ export async function getUser() {
     }
 
     const user = await AsyncStorage.getItem(USER_KEY);
-    return user ? JSON.parse(user) : null;
+    return user ? JSON.parse(user) : memoryUser;
   } catch {
-    return null;
+    return memoryUser;
   }
 }
 
 export async function removeToken() {
   memoryToken = null;
+  memoryUser = null;
   try {
-    await AsyncStorage.removeItem(TOKEN_KEY);
-    await AsyncStorage.removeItem(USER_KEY);
-    await AsyncStorage.removeItem(CURRENT_USER_KEY);
+    await AsyncStorage.clear();
   } catch { }
 }
 
@@ -108,7 +112,10 @@ export async function request<T>(
       };
 
       if (response.status === 401) {
-        await removeToken();
+        // Solo borrar token si no es una peticion a user-company para evitar ciclo infinito
+        if (!url.includes('/user-company')) {
+          await removeToken();
+        }
       }
 
       throw error;

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, palette, typography } from '../theme/colors';
 
 // Simple mapping from route name to icon name
@@ -65,6 +65,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
           const routeName = route.name;
           const label = getLabel(routeName);
           const iconName = getIconName(routeName) as any;
+          const isAccount = routeName === 'account';
 
           return (
             <TouchableOpacity
@@ -80,11 +81,19 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                 isFocused && styles.tabItemFocused
               ]}
             >
-              <Ionicons
-                name={iconName}
-                size={22}
-                color={"#ffffff"}
-              />
+              {isAccount ? (
+                <Image
+                  source={require('../../assets/images/account_icon.png')}
+                  style={styles.accountIcon}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Ionicons
+                  name={iconName}
+                  size={22}
+                  color={"#ffffff"}
+                />
+              )}
               <Text style={[styles.tabLabel, isFocused && styles.tabLabelFocused]}>
                 {label}
               </Text>
@@ -139,5 +148,10 @@ const styles = StyleSheet.create({
   },
   tabLabelFocused: {
     fontWeight: typography.bold,
+  },
+  accountIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
 });

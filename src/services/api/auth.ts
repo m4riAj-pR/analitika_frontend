@@ -9,8 +9,20 @@ export const loginUser = async (emailOrData: any, password?: string) => {
     body: JSON.stringify({ email, password: pass }),
   });
 
+  // Guardar token
   await saveToken(res.access_token);
-  await saveUser(res.user);
+
+  // Extraer id_company de la respuesta (primer empresa)
+  let userToSave = res.user || res;
+  if (userToSave && Array.isArray(userToSave.companies) && userToSave.companies.length > 0) {
+    const companyId = userToSave.companies[0].id_company;
+    const companyName = userToSave.companies[0].name;
+    userToSave = { ...userToSave, id_company: companyId, company_name: companyName };
+  }
+  // Guardar usuario con id_company
+  await saveUser(userToSave);
+  console.log('Login response (augmented):', userToSave);
+
   return res;
 };
 
@@ -23,11 +35,20 @@ export const registerUser = async (data: any) => {
       first_name: data.first_name || "",
       last_name:  data.last_name  || "",
       phone:      data.phone      || "",
+      company:    data.company    || "",
     }),
   });
 
   await saveToken(res.access_token);
-  await saveUser(res.user);
+
+  let userToSave = res.user || res;
+  if (userToSave && Array.isArray(userToSave.companies) && userToSave.companies.length > 0) {
+    const companyId = userToSave.companies[0].id_company;
+    const companyName = userToSave.companies[0].name;
+    userToSave = { ...userToSave, id_company: companyId, company_name: companyName };
+  }
+  await saveUser(userToSave);
+
   return res;
 };
 
@@ -39,9 +60,24 @@ export const logoutUser = async () => {
   await removeToken();
 };
 
+// CORRECCIÓN 1: actualizar persona por id_person del usuario actual
+export const updateProfile = async (idPerson: number, data: {
+  name?: string;
+  lastname?: string;
+  email?: string;
+  phone?: string;
+}) => {
+  return await request(`/analitika/persons/${idPerson}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
 export const authApi = {
   register: registerUser,
   login:    loginUser,
   logout:   logoutUser,
+  updateProfile,
   me,
+  saveUser,
 };

@@ -1,5 +1,5 @@
 const getBaseUrl = () => {
-    return "https://analitika-production.up.railway.app";
+    return "http://10.157.24.201:8000";
 };
 
 export const API_BASE_URL = getBaseUrl();

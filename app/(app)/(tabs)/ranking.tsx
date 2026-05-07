@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import AccountAvatar from '../../../src/components/AccountAvatar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   colors,
@@ -172,7 +173,7 @@ export default function RankingScreen() {
           <Text style={styles.headerSub}>Últimos 30 días</Text>
         </View>
         <TouchableOpacity style={styles.avatarBtn} activeOpacity={0.75}>
-          <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
+          <AccountAvatar size={36} />
         </TouchableOpacity>
       </View>
 

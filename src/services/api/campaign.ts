@@ -2,9 +2,10 @@ import { request } from "./client";
 
 const BASE = "/analitika/campaigns";
 
-export const getCampaigns = () => {
-  console.log("CAMPAIGNS REQUEST:", BASE);
-  return request(BASE);
+export const getCampaigns = (id_company?: number) => {
+  const endpoint = id_company ? `${BASE}?company=${id_company}` : BASE;
+  console.log("CAMPAIGNS REQUEST:", endpoint);
+  return request(endpoint);
 };
 
 export const getTopCampaigns = () => {

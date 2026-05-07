@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import AccountAvatar from '../../../src/components/AccountAvatar';
 import { LineChart } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { campaignsApi } from '../../../src/services/api/campaign';
@@ -34,48 +35,45 @@ function Header() {
   return (
     <View style={styles.headerContainer}>
       <View style={styles.logoWrapper}>
-        <Image
+        <Image 
           source={require('../../../assets/images/icon.png')}
           style={styles.logoImage}
           resizeMode="contain"
         />
       </View>
+
       <TouchableOpacity
         style={styles.profileButton}
         activeOpacity={0.7}
         onPress={() => router.push('/(app)/(tabs)/account')}
       >
-        <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
+        <AccountAvatar size={42} />
       </TouchableOpacity>
     </View>
   );
 }
 
 // ─── Campaign Card ───────────────────────────────────────────────────────────
-function CampaignCard({ campaign, onSelect }: { campaign: Campaign; onSelect: () => void }) {
-  // Generar un diseño decorativo aleatorio basado en el ID o nombre
-  const isAltDesign = campaign.name.length % 2 === 0;
+function CampaignCard({ campaign, onSelect, index }: { campaign: Campaign; onSelect: () => void; index: number }) {
+  const isAltDesign = index % 2 === 0;
 
   return (
     <View style={styles.cardContainer}>
-      <View style={styles.cardContent}>
-        <View style={styles.cardInfo}>
-          <Text style={styles.cardTitle}>Nombre</Text>
-          <Text style={styles.cardTitle}>{campaign.name}</Text>
-        </View>
+      {/* Decoración de fondo */}
+      <View style={styles.decorationContainer}>
+        {isAltDesign ? (
+          <View style={styles.barsContainer}>
+            <View style={[styles.bar, { height: '60%' }]} />
+            <View style={[styles.bar, { height: '80%' }]} />
+            <View style={[styles.bar, { height: '100%' }]} />
+          </View>
+        ) : (
+          <View style={styles.circleDecoration} />
+        )}
+      </View>
 
-        {/* Decoración visual (barras o semicírculo como en la imagen) */}
-        <View style={styles.decorationContainer}>
-          {isAltDesign ? (
-            <View style={styles.barsContainer}>
-              <View style={[styles.bar, { height: '40%' }]} />
-              <View style={[styles.bar, { height: '70%' }]} />
-              <View style={[styles.bar, { height: '100%' }]} />
-            </View>
-          ) : (
-            <View style={styles.circleDecoration} />
-          )}
-        </View>
+      <View style={styles.cardInfo}>
+        <Text style={styles.cardName}>{campaign.name}</Text>
       </View>
 
       <TouchableOpacity
@@ -99,7 +97,7 @@ function EmptyState() {
       </View>
       <Text style={emptyStyles.title}>No hay campañas</Text>
       <Text style={emptyStyles.subtitle}>
-        Parece que aún no has creado ninguna campaña. Comienza ahora para ver tus resultados.
+        Parece que aún no has creado ninguna campaña activa.
       </Text>
       <TouchableOpacity
         style={emptyStyles.cta}
@@ -107,7 +105,7 @@ function EmptyState() {
         onPress={() => router.push('/(app)/create')}
       >
         <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-        <Text style={emptyStyles.ctaText}>Crear mi primera campaña</Text>
+        <Text style={emptyStyles.ctaText}>Crear campaña</Text>
       </TouchableOpacity>
     </View>
   );
@@ -128,6 +126,7 @@ function KpiCard({ label, value, isCurrency = false }: { label: string; value: n
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
+  const { campaignId } = useLocalSearchParams();
 
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -141,12 +140,22 @@ export default function DashboardScreen() {
 
   // 1️⃣ Cargar lista de campañas
   useEffect(() => {
-    console.log("LOADING CAMPAIGNS");
     campaignsApi
       .getAll()
       .then((data: any) => {
-        console.log("CAMPAIGNS RESPONSE:", data);
-        setCampaigns(data || []);
+        const all = Array.isArray(data) ? data : (data?.response || []);
+        
+        // La lista principal solo muestra las activas
+        const activeOnly = all.filter((c: Campaign) => String(c.status).toLowerCase() === 'active');
+        setCampaigns(activeOnly);
+
+        if (campaignId) {
+            const found = all.find((c: Campaign) => String(c.id_campaign) === String(campaignId));
+            if (found) {
+                setSelectedCampaign(found);
+                return;
+            }
+        }
         setSelectedCampaign(null);
       })
       .catch((err: any) => {
@@ -155,9 +164,9 @@ export default function DashboardScreen() {
         setSelectedCampaign(null);
       })
       .finally(() => setLoadingCampaigns(false));
-  }, []);
+  }, [campaignId]);
 
-  // 2️⃣ Cargar estadísticas de la campaña seleccionada
+  // 2️⃣ Cargar estadísticas
   const fetchStats = useCallback(async (campaign: Campaign) => {
     if (campaign.id_campaign == null) {
       setStatsError(true);
@@ -189,126 +198,71 @@ export default function DashboardScreen() {
     if (selectedCampaign) fetchStats(selectedCampaign);
   }, [selectedCampaign, fetchStats]);
 
-  // ─── Loading inicial ───────────────────────────────────────────────────────
   if (loadingCampaigns) {
     return (
       <View style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Cargando dashboard…</Text>
       </View>
     );
   }
 
-  // ─── Sin campañas ─────────────────────────────────────────────────────────
-  if (campaigns.length === 0) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Header />
-        <EmptyState />
-      </View>
-    );
-  }
-
-  // ─── Vista de Lista de Dashboards ──────────────────────────────────────────
+  // ─── Vista de Lista ──────────────────────────────────────────────────────────
   if (!selectedCampaign) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <Header />
         <Text style={styles.listTitle}>DashBoards</Text>
-        <FlatList
-          data={campaigns}
-          keyExtractor={(item) => String(item.id_campaign)}
-          renderItem={({ item }) => (
-            <CampaignCard
-              campaign={item}
-              onSelect={() => setSelectedCampaign(item)}
+        
+        {campaigns.length === 0 ? (
+            <EmptyState />
+        ) : (
+            <FlatList
+              data={campaigns}
+              keyExtractor={(item) => String(item.id_campaign)}
+              renderItem={({ item, index }) => (
+                <CampaignCard
+                  campaign={item}
+                  index={index}
+                  onSelect={() => setSelectedCampaign(item)}
+                />
+              )}
+              contentContainerStyle={[styles.listScrollContent, { paddingBottom: insets.bottom + 100 }]}
+              showsVerticalScrollIndicator={false}
+              ItemSeparatorComponent={() => <View style={{ height: 20 }} />}
             />
-          )}
-          contentContainerStyle={[styles.listScrollContent, { paddingBottom: insets.bottom + 20 }]}
-          showsVerticalScrollIndicator={false}
-        />
+        )}
       </View>
     );
   }
 
-  // ─── Con campañas ─────────────────────────────────────────────────────────
+  // ─── Vista de Detalle ────────────────────────────────────────────────────────
   const chartLabels = clicsPorDia.map((d: any, i) => d.fecha || d.day || `D${i + 1}`);
   const chartValues = clicsPorDia.map((d: any) => Number(d.clics || d.count || 0));
   const hasChart = chartValues.length > 0;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-
-      {/* HEADER DE DETALLE */}
       <View style={styles.detailHeader}>
-        <TouchableOpacity
-          onPress={() => setSelectedCampaign(null)}
-          style={styles.backButton}
-        >
+        <TouchableOpacity onPress={() => setSelectedCampaign(null)} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color={colors.primary} />
           <Text style={styles.backText}>Volver</Text>
         </TouchableOpacity>
         <Text style={styles.detailTitle}>Estadísticas</Text>
-        <View style={{ width: 40 }} /> {/* Spacer */}
+        <View style={{ width: 80 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
-        showsVerticalScrollIndicator={false}
-      >
-
-        {/* CAMPAIGN SELECTOR */}
-        {campaigns.length > 1 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.campaignSelector}>
-            {campaigns.map((c) => {
-              const selected = c.id_campaign === selectedCampaign?.id_campaign;
-              return (
-                <TouchableOpacity
-                  key={c.id_campaign}
-                  style={[styles.campaignChip, selected && styles.campaignChipActive]}
-                  onPress={() => setSelectedCampaign(c)}
-                  activeOpacity={0.75}
-                >
-                  <Text style={[styles.campaignChipText, selected && styles.campaignChipTextActive]}>
-                    {c.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        )}
-
-        {/* CAMPAIGN NAME BANNER */}
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.campaignBanner}>
-          <Ionicons name="megaphone-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
-          <Text style={styles.campaignBannerText} numberOfLines={1}>
-            {selectedCampaign?.name}
-          </Text>
+          <Text style={styles.campaignBannerText}>{selectedCampaign?.name}</Text>
           <View style={[styles.statusBadge, selectedCampaign?.status === 'active' && styles.statusBadgeActive]}>
-            <Text style={styles.statusBadgeText}>
-              {selectedCampaign?.status === 'active' ? 'Activa' : selectedCampaign?.status === 'paused' ? 'Pausada' : 'Finalizada'}
-            </Text>
+            <Text style={styles.statusBadgeText}>{selectedCampaign?.status === 'active' ? 'Activa' : 'Inactiva'}</Text>
           </View>
         </View>
 
-        {/* LOADING STATS */}
         {loadingStats ? (
-          <View style={styles.statsLoading}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.loadingText}>Cargando métricas…</Text>
-          </View>
-        ) : statsError ? (
-          /* SIN STATS AÚN */
-          <View style={styles.noStatsCard}>
-            <Ionicons name="analytics-outline" size={40} color={palette.purple3} />
-            <Text style={styles.noStatsTitle}>Sin métricas todavía</Text>
-            <Text style={styles.noStatsSubtitle}>
-              Comparte el link trackeable de esta campaña para comenzar a registrar clics y conversiones.
-            </Text>
-          </View>
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 40 }} />
         ) : (
           <>
-            {/* KPI CARDS */}
             <View style={styles.kpiGrid}>
               <KpiCard label="Clics" value={metricas?.clics ?? 0} />
               <KpiCard label="Convers." value={metricas?.conversiones ?? 0} />
@@ -316,66 +270,26 @@ export default function DashboardScreen() {
               <KpiCard label="ROI" value={metricas?.roi ?? 0} isCurrency />
             </View>
 
-            {/* GRÁFICA */}
-            <View style={[styles.chartCard, shadows.card]}>
+            <View style={styles.chartCard}>
               <Text style={styles.sectionTitle}>Clics por Día</Text>
               {hasChart ? (
-                <View pointerEvents="none" style={styles.chartWrapper}>
-                  <LineChart
-                    data={{
-                      labels: chartLabels,
-                      datasets: [{ data: chartValues }],
-                    }}
-                    width={width - spacing.xl * 2 - 40}
-                    height={220}
-                    chartConfig={{
-                      backgroundColor: colors.bgCard,
-                      backgroundGradientFrom: colors.bgCard,
-                      backgroundGradientTo: colors.bgCard,
-                      decimalPlaces: 0,
-                      color: (opacity = 1) => `rgba(139, 92, 246, ${opacity})`,
-                      labelColor: (opacity = 1) => `rgba(100, 116, 139, ${opacity})`,
-                      style: { borderRadius: 16 },
-                      propsForDots: { r: '5', strokeWidth: '2', stroke: colors.primary },
-                    }}
-                    bezier
-                    style={{ marginVertical: 8, borderRadius: 16 }}
-                  />
-                </View>
+                <LineChart
+                  data={{ labels: chartLabels, datasets: [{ data: chartValues }] }}
+                  width={width - 80}
+                  height={220}
+                  chartConfig={{
+                    backgroundColor: '#FFF',
+                    backgroundGradientFrom: '#FFF',
+                    backgroundGradientTo: '#FFF',
+                    color: (opacity = 1) => `rgba(95, 27, 242, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(100, 116, 139, ${opacity})`,
+                    propsForDots: { r: '5', strokeWidth: '2', stroke: colors.primary },
+                  }}
+                  bezier
+                  style={{ borderRadius: 16, marginTop: 10 }}
+                />
               ) : (
-                <View style={styles.noChartPlaceholder}>
-                  <Ionicons name="trending-up-outline" size={32} color={palette.purple3} />
-                  <Text style={styles.noChartText}>Los datos aparecerán aquí cuando registres clics.</Text>
-                </View>
-              )}
-            </View>
-
-            {/* TABLA DE CLICS */}
-            <View style={[styles.tableCard, shadows.card]}>
-              <Text style={styles.sectionTitle}>Últimos Clics</Text>
-              {tablaClics.length === 0 ? (
-                <View style={styles.noChartPlaceholder}>
-                  <Ionicons name="list-outline" size={32} color={palette.purple3} />
-                  <Text style={styles.noChartText}>Aún no hay clics registrados.</Text>
-                </View>
-              ) : (
-                <View style={styles.tableWrapper}>
-                  <View style={styles.tableRowHeader}>
-                    <Text style={[styles.tableColHeader, { flex: 1.2 }]}>Fecha</Text>
-                    <Text style={[styles.tableColHeader, { flex: 1 }]}>Hora</Text>
-                    <Text style={[styles.tableColHeader, { flex: 1 }]}>País</Text>
-                  </View>
-                  {tablaClics.map((row, i) => (
-                    <View
-                      key={i}
-                      style={[styles.tableRow, i === tablaClics.length - 1 && { borderBottomWidth: 0 }]}
-                    >
-                      <Text style={[styles.tableCol, { flex: 1.2 }]}>{row.fecha || 'N/A'}</Text>
-                      <Text style={[styles.tableCol, { flex: 1 }]}>{row.hora || 'N/A'}</Text>
-                      <Text style={[styles.tableCol, { flex: 1 }]}>{row.pais || 'N/A'}</Text>
-                    </View>
-                  ))}
-                </View>
+                <Text style={styles.noDataText}>No hay datos suficientes para la gráfica.</Text>
               )}
             </View>
           </>
@@ -385,366 +299,106 @@ export default function DashboardScreen() {
   );
 }
 
-// ─── Empty State Styles ───────────────────────────────────────────────────────
-const emptyStyles = StyleSheet.create({
-  wrapper: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl * 1.5,
-    gap: spacing.lg,
-  },
-  iconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#EDE9FE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  title: {
-    fontSize: typography.size2xl,
-    fontWeight: typography.bold,
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: typography.sizeMd,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  cta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: radii.pill,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md + 2,
-    marginTop: spacing.sm,
-  },
-  ctaText: {
-    color: '#fff',
-    fontWeight: typography.bold,
-    fontSize: 16,
-  },
-});
-
-// ─── Main Styles ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgPage },
+  container: { flex: 1, backgroundColor: '#FFF' },
   centered: { justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 10, color: colors.textSecondary, fontSize: typography.sizeSm },
-
-  /* Header */
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
+    paddingHorizontal: 24,
     height: 80,
   },
-  logoWrapper: {
-    position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: -5,
-  },
-  logoImage: {
-    width: 190,
-    height: 190,
-  },
-  profileButton: {
-    padding: 2,
-  },
+  logoWrapper: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
+  logoImage: { width: 300, height: 300 },
+  profileButton: { padding: 4 },
 
-  /* List View */
   listTitle: {
-    fontSize: 32,
-    fontWeight: typography.bold,
+    fontSize: 28,
+    fontWeight: '700',
     color: colors.primary,
-    marginHorizontal: spacing.xl,
-    marginVertical: spacing.lg,
+    paddingHorizontal: 24,
+    marginBottom: 20,
   },
-  listScrollContent: {
-    paddingHorizontal: spacing.xl,
-    gap: spacing.xl,
-  },
+  listScrollContent: { paddingHorizontal: 24 },
 
-  /* Campaign Card */
+  // CARD DESIGN MOCKUP
   cardContainer: {
-    backgroundColor: '#EAE6F8',
-    borderRadius: 30,
+    backgroundColor: '#E9E4F5',
+    borderRadius: 28,
     padding: 24,
-    height: 180,
+    height: 190,
     justifyContent: 'space-between',
+    position: 'relative',
     overflow: 'hidden',
-    ...shadows.card,
-  },
-  cardContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  cardInfo: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 24,
-    fontWeight: typography.bold,
-    color: '#1A1A1A',
-    lineHeight: 28,
   },
   decorationContainer: {
-    width: 120,
-    height: 80,
-    justifyContent: 'flex-end',
+    position: 'absolute',
+    right: 0, top: 0, bottom: 0,
+    width: 150,
+    justifyContent: 'center',
     alignItems: 'flex-end',
+    paddingRight: 20,
   },
   barsContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
-    height: '100%',
+    height: '60%',
   },
   bar: {
-    width: 25,
-    backgroundColor: palette.purple3,
-    borderRadius: 4,
-    opacity: 0.6,
+    width: 28,
+    backgroundColor: '#AD8DF2',
+    borderRadius: 6,
+    opacity: 0.5,
   },
   circleDecoration: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: palette.purple3,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: '#AD8DF2',
     opacity: 0.4,
     position: 'absolute',
-    right: -40,
-    top: -20,
+    right: -40, top: -20,
   },
+  cardInfo: { zIndex: 2 },
+  cardLabel: { fontSize: 22, fontWeight: '600', color: '#000' },
+  cardName: { fontSize: 22, fontWeight: '600', color: '#000' },
   cardButton: {
     backgroundColor: colors.primary,
-    borderRadius: radii.pill,
-    paddingVertical: 12,
+    borderRadius: 16,
+    paddingVertical: 14,
     alignItems: 'center',
-    width: '100%',
+    zIndex: 2,
   },
-  cardButtonText: {
-    color: '#FFFFFF',
-    fontWeight: typography.bold,
-    fontSize: 16,
-  },
+  cardButtonText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
 
-  /* Detail Header */
-  detailHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: 80,
-  },
-  backText: {
-    color: colors.primary,
-    fontSize: 16,
-    fontWeight: typography.medium,
-  },
-  detailTitle: {
-    fontSize: 20,
-    fontWeight: typography.bold,
-    color: colors.primary,
-  },
+  // DETAIL
+  detailHeader: { flexDirection: 'row', alignItems: 'center', padding: 24 },
+  backButton: { flexDirection: 'row', alignItems: 'center' },
+  backText: { color: colors.primary, marginLeft: 4, fontWeight: '600' },
+  detailTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700', color: colors.primary },
+  scrollContent: { paddingHorizontal: 24 },
+  campaignBanner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  campaignBannerText: { fontSize: 20, fontWeight: '700', color: '#000' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: '#EEE' },
+  statusBadgeActive: { backgroundColor: '#D1FAE5' },
+  statusBadgeText: { fontSize: 12, fontWeight: '600' },
+  kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 15, justifyContent: 'space-between', marginBottom: 20 },
+  kpiCard: { width: '47%', backgroundColor: '#F3F0FA', padding: 16, borderRadius: 20 },
+  kpiLabel: { fontSize: 14, color: '#666', marginBottom: 4 },
+  kpiValue: { fontSize: 24, fontWeight: '700', color: colors.primary },
+  kpiValueCurrency: { fontSize: 18, fontWeight: '700', color: colors.primary },
+  chartCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, ...shadows.card },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#000' },
+  noDataText: { textAlign: 'center', marginTop: 20, color: '#999' },
+});
 
-  scrollContent: {
-    paddingHorizontal: spacing.xl,
-    gap: spacing.xl,
-    paddingTop: spacing.sm,
-  },
-
-  /* Campaign Selector */
-  campaignSelector: { marginBottom: -spacing.sm },
-  campaignChip: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.pill,
-    backgroundColor: colors.bgCard,
-    marginRight: spacing.sm,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  campaignChipActive: {
-    backgroundColor: '#EDE9FE',
-    borderColor: colors.primary,
-  },
-  campaignChipText: {
-    fontSize: typography.sizeSm,
-    color: colors.textSecondary,
-    fontWeight: typography.semibold,
-  },
-  campaignChipTextActive: {
-    color: colors.primary,
-  },
-
-  /* Campaign Banner */
-  campaignBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bgCard,
-    borderRadius: radii.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: 4,
-  },
-  campaignBannerText: {
-    flex: 1,
-    fontSize: typography.sizeSm,
-    fontWeight: typography.semibold,
-    color: colors.textPrimary,
-  },
-  statusBadge: {
-    borderRadius: radii.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    backgroundColor: '#F1F5F9',
-  },
-  statusBadgeActive: {
-    backgroundColor: '#D1FAE5',
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: typography.bold,
-    color: colors.textSecondary,
-  },
-
-  /* Stats loading */
-  statsLoading: {
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.xl,
-  },
-
-  /* No stats yet */
-  noStatsCard: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radii.xl,
-    padding: spacing.xl * 1.5,
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  noStatsTitle: {
-    fontSize: typography.sizeLg,
-    fontWeight: typography.bold,
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  noStatsSubtitle: {
-    fontSize: typography.sizeSm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-
-  /* KPIs */
-  kpiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    justifyContent: 'space-between',
-  },
-  kpiCard: {
-    width: '47%',
-    backgroundColor: '#EDE9FE',
-    borderRadius: radii.xl,
-    padding: spacing.lg,
-    justifyContent: 'center',
-    ...shadows.card,
-  },
-  kpiLabel: {
-    fontSize: typography.sizeMd,
-    color: colors.textSecondary,
-    fontWeight: typography.semibold,
-    marginBottom: spacing.xs,
-  },
-  kpiValue: {
-    fontSize: typography.size2xl,
-    color: colors.primary,
-    fontWeight: typography.bold,
-  },
-  kpiValueCurrency: {
-    fontSize: typography.sizeLg,
-    color: colors.primary,
-    fontWeight: typography.bold,
-  },
-
-  /* Cards */
-  chartCard: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radii.xl,
-    padding: spacing.lg,
-  },
-  tableCard: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radii.xl,
-    padding: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: typography.sizeLg,
-    fontWeight: typography.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-  },
-  chartWrapper: {
-    alignItems: 'center',
-    marginLeft: -10,
-  },
-  noChartPlaceholder: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-    gap: spacing.md,
-  },
-  noChartText: {
-    fontSize: typography.sizeSm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-
-  /* Tabla */
-  tableWrapper: {
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: radii.md,
-    overflow: 'hidden',
-  },
-  tableRowHeader: {
-    flexDirection: 'row',
-    backgroundColor: '#F8FAFC',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-  },
-  tableColHeader: {
-    fontSize: typography.sizeSm,
-    fontWeight: typography.bold,
-    color: colors.textSecondary,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-  },
-  tableCol: {
-    fontSize: typography.sizeSm,
-    color: colors.textPrimary,
-  },
+const emptyStyles = StyleSheet.create({
+  wrapper: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  iconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F3F0FA', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  title: { fontSize: 20, fontWeight: '700', color: '#000', marginBottom: 10 },
+  subtitle: { textAlign: 'center', color: '#666', marginBottom: 20 },
+  cta: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+  ctaText: { color: '#FFF', fontWeight: '600' },
 });

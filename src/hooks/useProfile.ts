@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { userCompanyApi } from '../services/api';
 import * as authService from '../services/api/auth';
-import * as userService from '../services/api/user';
 
 export function useProfile() {
     const [profile, setProfile] = useState<any>(null);
@@ -13,8 +13,45 @@ export function useProfile() {
             setLoading(true);
             setError(null);
             const response: any = await authService.me();
-            // Asumiendo que la respuesta puede venir envuelta en .response
-            setProfile(response?.response || response);
+            console.log("DEBUG: authService.me() devolvió:", response);
+            let user = response?.response || response;
+            console.log("DEBUG: user extraído de la respuesta:", user);
+
+            if (user) {
+                // 1. Intentar sacar el id_company directamente del array companies si existe
+                if (!user.id_company && Array.isArray(user.companies) && user.companies.length > 0) {
+                    user = { ...user, id_company: user.companies[0].id_company, company_name: user.companies[0].name };
+                }
+
+                // 2. Fallback: Buscar la empresa en la tabla intermedia user-company
+                if (!user.id_company && user.id_user) {
+                    try {
+                        const { userCompanyApi } = await import('../services/api');
+                        const ucResponse: any = await userCompanyApi.getAll();
+
+                        const userCompanies = Array.isArray(ucResponse) ? ucResponse : (ucResponse?.response || []);
+                        const relation = userCompanies.find((uc: any) => Number(uc.id_user) === Number(user.id_user));
+                        
+                        if (relation) {
+                            user = { 
+                                ...user, 
+                                id_company: Number(relation.id_company),
+                            };
+                            
+                            // Guardar en caché
+                            await authService.authApi.saveUser(user);
+                            console.log("Se encontró la relación en user-company y se guardó en caché:", user);
+                        } else {
+                            console.warn("No se encontró relación en user-company para el usuario:", user.id_user);
+                        }
+                    } catch (err) {
+                        console.error('Error buscando en user-company:', err);
+                    }
+                }
+            }
+
+            console.log("USEPROFILE RESOLVED USER:", user);
+            setProfile(user);
         } catch (err: any) {
             console.error('Error fetching profile:', err);
             setError(err.message || 'Error al cargar perfil');
@@ -26,14 +63,28 @@ export function useProfile() {
     const updateProfile = async (data: any) => {
         try {
             setSaving(true);
-            const userId = profile?.id_user || profile?.id; // Intenta ambos por si acaso
-            if (!userId) {
-                throw new Error("No se pudo encontrar el ID del usuario para actualizar.");
-            }
-            const response: any = await userService.updateProfile(userId, data);
-            const updated = response?.response || response;
-            setProfile(updated);
-            return updated;
+            if (!profile?.id_person) throw new Error("No hay sesión activa");
+
+            // CORRECCIÓN 5: campos correctos para el schema Person del backend
+            await authService.updateProfile(profile.id_person, {
+                name:     data.first_name || data.name,
+                lastname: data.last_name  || data.lastname,
+                email:    data.email || profile.email,
+                phone:    data.phone,
+            });
+
+            // Actualizar caché local
+            const updatedUser = {
+                ...profile,
+                first_name: data.first_name || data.name || profile.first_name,
+                last_name: data.last_name || data.lastname || profile.last_name,
+                phone: data.phone || profile.phone,
+            };
+            await authService.authApi.saveUser(updatedUser);
+
+            // Refrescar estado local
+            await fetchProfile();
+            return updatedUser;
         } catch (err: any) {
             console.error('Error updating profile:', err);
             throw err;

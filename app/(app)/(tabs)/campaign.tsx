@@ -1,42 +1,59 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    ScrollView,
     ActivityIndicator,
     Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
 } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-    colors,
-    radii,
-    spacing,
-    typography
-} from '../../../src/theme/colors';
-
+import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { useCampaigns } from '../../../src/hooks/useCampaigns';
-// trackingStatsApi eliminado: /c/{id_link} registra clicks automáticamente
-import { trackingLinksApi } from '../../../src/services/api/tracking';
 
+import { colors, spacing, typography, shadows } from '@/src/theme/colors';
+import AccountAvatar from '@/src/components/AccountAvatar';
+import { useCampaigns } from '@/src/hooks/useCampaigns';
+import { trackingLinksApi } from '@/src/services/api/tracking';
+import { Campaign } from '@/src/services/api/types';
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function CampaignScreen() {
+    const { campaigns, loading, reload } = useCampaigns();
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { campaigns, loading, reload } = useCampaigns();
+    const [linksMap, setLinksMap] = React.useState<Record<number, string>>({});
 
-    console.log("LOADING CAMPAIGNS");
+    // Recargar siempre que la pantalla gane foco
+    useFocusEffect(
+        React.useCallback(() => {
+            reload();
+        }, [reload])
+    );
 
-    // Los clicks se registran automáticamente en el backend cuando el usuario
-    // accede al link /c/{id_link}. No es necesario registrarlos manualmente.
+    // Cargar links para todas las campañas
+    useEffect(() => {
+        const fetchLinks = async () => {
+            if (Array.isArray(campaigns)) {
+                const newMap: Record<number, string> = {};
+                for (const camp of campaigns) {
+                    if (camp.id_campaign) {
+                        try {
+                            const links = await trackingLinksApi.listByCampaign(camp.id_campaign);
+                            if (links && links.length > 0) {
+                                newMap[camp.id_campaign] = trackingLinksApi.publicTrackUrl(Number(links[0].id_link));
+                            }
+                        } catch (e) {}
+                    }
+                }
+                setLinksMap(newMap);
+            }
+        };
+        fetchLinks();
+    }, [campaigns]);
 
-    // Filtrar campañas
-    const topCampaign = Array.isArray(campaigns) && campaigns.length > 0 ? campaigns[0] : null;
     const activeCampaigns = Array.isArray(campaigns)
         ? campaigns.filter(c => String(c.status).toLowerCase() === 'active')
         : [];
@@ -44,238 +61,222 @@ export default function CampaignScreen() {
         ? campaigns.filter(c => String(c.status).toLowerCase() !== 'active')
         : [];
 
-    console.log("CAMPAIGNS RESPONSE:", campaigns);
-
     const copyLink = async (id_campaign: number | null) => {
         if (id_campaign === null) {
             Alert.alert('Error', 'Campaña no tiene id válido');
             return;
         }
+        
+        const existingLink = linksMap[id_campaign];
+        if (existingLink) {
+            await Clipboard.setStringAsync(existingLink);
+            Alert.alert('¡Copiado!', `Link copiado: ${existingLink}`);
+            return;
+        }
+
         try {
-            const links = await trackingLinksApi.listByCampaign(id_campaign);
-            if (links && links.length > 0) {
-                const id_link = links[0].id_link;
-                if (!id_link || isNaN(Number(id_link))) {
-                    console.warn('Invalid tracking id:', id_link);
-                    Alert.alert('Error', 'El link trackeable tiene un ID inválido.');
+            let links = await trackingLinksApi.listByCampaign(id_campaign);
+            if (!links || links.length === 0) {
+                const res: any = await trackingLinksApi.create({
+                    id_campaign: id_campaign,
+                    destination: 'https://analitika.com',
+                });
+                if (res && res.id_link) {
+                    const trackUrl = trackingLinksApi.publicTrackUrl(Number(res.id_link));
+                    setLinksMap(prev => ({ ...prev, [id_campaign]: trackUrl }));
+                    await Clipboard.setStringAsync(trackUrl);
+                    Alert.alert('¡Copiado!', `Link generado y copiado: ${trackUrl}`);
                     return;
                 }
-                const trackUrl = trackingLinksApi.publicTrackUrl(Number(id_link));
-                await Clipboard.setStringAsync(trackUrl);
-                Alert.alert('¡Copiado!', 'El link trackeable ha sido copiado al portapapeles.');
-            } else {
-                Alert.alert('Sin Link', 'Esta campaña aún no tiene un link trackeable generado.');
+                links = await trackingLinksApi.listByCampaign(id_campaign);
             }
-        } catch {
-            Alert.alert('Error', 'No se pudo copiar el link.');
+
+            if (links && links.length > 0) {
+                const id_link = links[0].id_link;
+                const trackUrl = trackingLinksApi.publicTrackUrl(Number(id_link));
+                setLinksMap(prev => ({ ...prev, [id_campaign]: trackUrl }));
+                await Clipboard.setStringAsync(trackUrl);
+                Alert.alert('¡Copiado!', `Link copiado: ${trackUrl}`);
+            }
+        } catch (err: any) {
+            Alert.alert('Error', `No se pudo copiar el link: ${err.message || 'Error'}`);
         }
     };
 
+    const renderActiveCard = (camp: Campaign) => {
+        const campId = camp.id_campaign;
+        if (!campId) return null;
 
-    // Ensure we reload campaigns when this screen mounts (helps after creating a campaign)
-    React.useEffect(() => {
-        reload();
-    }, [reload]);
+        return (
+            <View key={`active-card-${campId}`} style={styles.activeCard}>
+                <TouchableOpacity onPress={() => router.push({ pathname: '/(app)/create', params: { id: String(campId) } })}>
+                    <Text style={styles.activeCardTitle}>{camp.name}</Text>
+                </TouchableOpacity>
+                
+                {/* Botón Copiar Estilo Mockup (Cápsula Blanca) */}
+                <TouchableOpacity style={styles.copyCapsule} onPress={() => copyLink(campId)}>
+                    <Ionicons name="copy" size={20} color={colors.primary} />
+                    <Text style={styles.copyCapsuleText}>Copiar link trackeable</Text>
+                </TouchableOpacity>
 
-    // handleCreateCampaign fue eliminado ya que "Create" es un Tab manejado por customtabbar.tsx
+                {/* Botón Dashboard Estilo Mockup (Sólido Morado) */}
+                <TouchableOpacity style={styles.dashboardButton} onPress={() => router.push('/(app)/(tabs)/dashboard')}>
+                    <Text style={styles.dashboardButtonText}>Ver Dashboard</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    };
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             {/* ── HEADER ── */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Campañas</Text>
-                <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
-                    <TouchableOpacity
-                        style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: radii.pill,
-                            backgroundColor: colors.primary,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                        activeOpacity={0.75}
-                        onPress={() => router.push('/(app)/create')}
-                    >
-                        <Ionicons name="add" size={24} color={colors.bgPage} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.avatarBtn}
-                        activeOpacity={0.75}
-                        onPress={() => router.push('/(app)/(tabs)/account')}
-                    >
-                        <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
-                    </TouchableOpacity>
-                </View>
+                <TouchableOpacity onPress={() => router.push('/(app)/(tabs)/account')}>
+                    <AccountAvatar size={42} />
+                </TouchableOpacity>
             </View>
 
             {loading ? (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 }}>
+                <View style={{ flex: 1, justifyContent: 'center' }}>
                     <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={{ marginTop: 10, color: colors.textSecondary }}>Cargando campañas…</Text>
                 </View>
             ) : (
-            <ScrollView
-                contentContainerStyle={[
-                    styles.scrollContent,
-                    { paddingBottom: insets.bottom + 90 }, // leave room for floating tab bar
-                ]}
-                showsVerticalScrollIndicator={false}
-            >
-                {/* ── TOP CAMPAIGN CARD ── */}
-                {topCampaign && (
-                    <View style={[styles.card, { backgroundColor: '#EDE9FE' }]}>
-                        <Text style={[styles.cardTitle, { color: colors.textPrimary, marginBottom: spacing.md }]}>{topCampaign.name}</Text>
-
-                        <TouchableOpacity style={styles.copyRow} onPress={() => copyLink(topCampaign.id_campaign)}>
-                            <View style={styles.copyIconWrapper}>
-                                <Ionicons name="copy" size={16} color={colors.bgPage} />
-                            </View>
-                            <Text style={styles.copyText}>Copiar link trackeable</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.btnDashboard} activeOpacity={0.8} onPress={() => router.push('/(app)/(tabs)/dashboard')}>
-                            <Text style={styles.btnDashboardText}>Ver Dashboard</Text>
-                        </TouchableOpacity>
+                <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}>
+                    
+                    {/* Sección Campañas Activas (Como Cards del Mockup) */}
+                    <View style={styles.activeSection}>
+                        {activeCampaigns.map(renderActiveCard)}
+                        {activeCampaigns.length === 0 && <Text style={styles.emptyText}>No hay campañas activas</Text>}
                     </View>
-                )}
 
-                {/* ── CAMPAÑAS ACTIVAS CARD ── */}
-                <View style={[styles.card, styles.activeCard, { backgroundColor: '#EDE9FE' }]}>
-                    <Text style={styles.cardTitle}>Campañas Activas</Text>
-                    {activeCampaigns.map((camp) => (
-                        <View key={camp.id_campaign} style={styles.campaignRowWhite}>
-                            <Text style={styles.campaignName}>{camp.name}</Text>
-                            <TouchableOpacity onPress={() => router.push({ pathname: '/(app)/create', params: { id: camp.id_campaign } })}>
-                                <Ionicons name="create-outline" size={20} color={colors.textPrimary} />
-                            </TouchableOpacity>
-                        </View>
-                    ))}
-                </View>
+                    {/* Sección Campañas Inactivas (Estilo Mockup) */}
+                    <View style={styles.inactiveSection}>
+                        <Text style={styles.sectionTitle}>Campañas Inactivas</Text>
+                        {inactiveCampaigns.map((camp) => (
+                            <View key={`inactive-${camp.id_campaign}`} style={styles.listItem}>
+                                <Text style={styles.listText} numberOfLines={1}>{camp.name}</Text>
+                                <View style={styles.listActions}>
+                                    <TouchableOpacity 
+                                        style={{ marginRight: 15 }}
+                                        onPress={() => router.push({ pathname: '/(app)/(tabs)/dashboard', params: { campaignId: String(camp.id_campaign) } })}
+                                    >
+                                        <Ionicons name="eye-outline" size={24} color={colors.primary} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => router.push({ pathname: '/(app)/create', params: { id: String(camp.id_campaign) } })}>
+                                        <Ionicons name="create-outline" size={24} color={colors.textPrimary} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        ))}
+                        {inactiveCampaigns.length === 0 && <Text style={styles.emptyText}>No hay campañas inactivas</Text>}
+                    </View>
 
-                {/* ── CAMPAÑAS INACTIVAS CARD ── */}
-                <View style={[styles.card, styles.activeCard, { backgroundColor: '#EDE9FE' }]}>
-                    <Text style={styles.cardTitle}>Campañas Inactivas</Text>
-                    {inactiveCampaigns.map((camp) => (
-                        <View key={camp.id_campaign} style={styles.campaignRowWhite}>
-                            <Text style={styles.campaignName}>{camp.name}</Text>
-                            <TouchableOpacity onPress={() => router.push({ pathname: '/(app)/create', params: { id: camp.id_campaign } })}>
-                                <Ionicons name="create-outline" size={20} color={colors.textPrimary} />
-                            </TouchableOpacity>
-                        </View>
-                    ))}
-                </View>
-            </ScrollView>
+                </ScrollView>
             )}
         </View>
     );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.bgPage,
-    },
-
-    /* Header */
+    container: { flex: 1, backgroundColor: colors.bgPage },
     header: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: spacing.xl,
-        paddingVertical: spacing.lg,
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 20,
     },
     headerTitle: {
-        fontSize: typography.size2xl,
-        fontWeight: typography.bold,
+        fontSize: 28,
+        fontWeight: '700',
         color: colors.primary,
     },
-    avatarBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: radii.pill,
-        backgroundColor: colors.bgCard,
-        alignItems: 'center',
-        justifyContent: 'center',
+    scrollContent: { paddingHorizontal: 24 },
+
+    // SECCIONES ESTILO MOCKUP (Color lila de fondo)
+    activeSection: {
+        marginBottom: 10,
+    },
+    inactiveSection: {
+        backgroundColor: '#E9E4F5',
+        borderRadius: 28,
+        padding: 24,
+        marginBottom: 24,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#000',
+        marginBottom: 16,
     },
 
-    /* ScrollView */
-    scrollContent: {
-        paddingHorizontal: spacing.xl,
-        paddingTop: spacing.sm,
-        gap: spacing.xl,
-    },
-
-    subtitle: {
-        fontSize: typography.sizeLg,
-        fontWeight: typography.medium,
-        color: colors.textBody,
-        marginBottom: spacing.xs,
-    },
-
-    /* Cards */
-    card: {
-        borderRadius: radii.xl,
-        padding: spacing.xl,
-        minHeight: 120,
-    },
+    // CARDS ACTIVAS (Exactamente como la imagen)
     activeCard: {
-        gap: spacing.md,
+        backgroundColor: '#E9E4F5', // Fondo lila suave
+        borderRadius: 28,
+        padding: 24,
+        marginBottom: 24,
     },
-    cardTitle: {
-        fontSize: typography.sizeLg,
-        fontWeight: typography.bold,
-        color: colors.textPrimary,
-        marginBottom: spacing.xs,
+    activeCardTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#000',
+        marginBottom: 16,
     },
-
-    /* Top Campaign Card Details */
-    copyRow: {
+    copyCapsule: {
         flexDirection: 'row',
+        backgroundColor: '#FFF', // Cápsula Blanca
+        borderRadius: 20,
+        paddingVertical: 12,
         alignItems: 'center',
-        gap: spacing.sm,
-        marginBottom: spacing.lg,
+        justifyContent: 'center',
+        marginBottom: 12,
     },
-    copyIconWrapper: {
-        width: 24,
-        height: 24,
-        borderRadius: radii.sm,
-        backgroundColor: colors.primary,
+    copyCapsuleText: {
+        color: colors.primary,
+        fontSize: 15,
+        fontWeight: '500',
+        marginLeft: 10,
+    },
+    dashboardButton: {
+        backgroundColor: colors.primary, // Botón Morado
+        borderRadius: 16,
+        paddingVertical: 14,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    copyText: {
-        fontSize: typography.sizeSm,
-        color: colors.primary,
-        fontWeight: typography.semibold,
-    },
-    btnDashboard: {
-        backgroundColor: colors.primary,
-        borderRadius: radii.pill,
-        paddingVertical: spacing.md,
-        alignItems: 'center',
-    },
-    btnDashboardText: {
-        color: colors.textOnPrimary,
-        fontWeight: typography.bold,
-        fontSize: typography.sizeMd,
+    dashboardButtonText: {
+        color: '#FFF',
+        fontSize: 15,
+        fontWeight: '600',
     },
 
-    /* Campañas list */
-    campaignRowWhite: {
-        height: 48,
-        borderRadius: radii.pill,
-        backgroundColor: colors.bgPage,
-        paddingHorizontal: spacing.xl,
+    // LISTA INACTIVAS (Fondo blanco dentro del lila)
+    listItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#F3F0FA', // Blanco-grisáceo suave para items
+        paddingHorizontal: 18,
+        paddingVertical: 14,
+        borderRadius: 18,
+        marginBottom: 12,
+    },
+    listText: {
+        fontSize: 15,
+        color: '#000',
+        flex: 1,
+        marginRight: 10,
+    },
+    listActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
     },
-    campaignName: {
-        fontSize: typography.sizeSm,
-        color: colors.textPrimary,
-        fontWeight: typography.medium,
-        flex: 1,
+    emptyText: {
+        fontSize: 14,
+        color: '#666',
+        fontStyle: 'italic',
+        textAlign: 'center',
     },
 });

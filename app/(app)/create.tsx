@@ -2,28 +2,30 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AccountAvatar from '../../src/components/AccountAvatar';
+import { useProfile } from '../../src/hooks/useProfile';
 import { campaignsApi, channelsApi, trackingLinksApi } from '../../src/services/api';
-import { getUser } from '../../src/services/api/client';
 import { CAMPAIGN_STATUS } from '../../src/services/api/types';
 import {
-  colors,
-  palette,
-  radii,
-  spacing,
-  typography,
+    colors,
+    palette,
+    radii,
+    spacing,
+    typography,
 } from '../../src/theme/colors';
 
 // ─── Date field group (DD / MM / YYYY) ───────────────────────────────────────
@@ -113,14 +115,13 @@ export default function CreateCampaignScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const campaignId = params.id ? Number(params.id) : null;
+  const { profile } = useProfile();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('active');
   const [showStatusModal, setShowStatusModal] = useState(false);
   const statusOptions = CAMPAIGN_STATUS;
-
-  const [idCompany, setIdCompany] = useState<number | null>(null);
 
   // Datos del Canal (entidad separada)
   const [channelName, setChannelName] = useState('');
@@ -137,15 +138,11 @@ export default function CreateCampaignScreen() {
   const [spent, setSpent] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
+  const [trackUrl, setTrackUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
       setSessionLoading(true);
-      // 1. Obtener id_company del usuario logueado
-      const user = await getUser();
-      if (user && user.id_company) {
-        setIdCompany(Number(user.id_company));
-      }
 
       // 2. Si es edición, cargar la campaña
       if (campaignId) {
@@ -168,6 +165,16 @@ export default function CreateCampaignScreen() {
               setEndYyyy(y); setEndMm(m); setEndDd(d);
             }
           }
+
+          // Cargar el link trackeable
+          try {
+            const links = await trackingLinksApi.listByCampaign(campaignId);
+            if (links && links.length > 0 && links[0].id_link) {
+              setTrackUrl(trackingLinksApi.publicTrackUrl(Number(links[0].id_link)));
+            }
+          } catch (err) {
+            console.log("No se pudo cargar el link trackeable", err);
+          }
         } catch (err) {
           console.error("Error loading campaign:", err);
         } finally {
@@ -186,17 +193,10 @@ export default function CreateCampaignScreen() {
       return;
     }
 
-    let companyId = idCompany;
-    if (!companyId) {
-      const user = await getUser();
-      companyId = user?.id_company ? Number(user.id_company) : null;
-      if (companyId) {
-        setIdCompany(companyId);
-      }
-    }
+    const companyId = profile?.id_company;
 
     if (!companyId) {
-      Alert.alert('Error', 'No se encontró la empresa asociada al usuario.');
+      Alert.alert('Error', 'No se encontró la empresa asociada al usuario. Verifica que tu cuenta tenga una empresa asignada.');
       return;
     }
 
@@ -224,11 +224,29 @@ export default function CreateCampaignScreen() {
       console.log("CREATE CAMPAIGN PAYLOAD:", campaignPayload);
 
       // 2. Guardar Campaña
-      let createdCampaign: any = null;
+      let newCampaignId: number | null = null;
       if (campaignId) {
+        // Actualización: el backend devuelve {ok: true}
         await campaignsApi.update(campaignId, campaignPayload);
       } else {
-        createdCampaign = await campaignsApi.create(campaignPayload);
+        // Creación: el backend ahora devuelve {ok: true, id_campaign: 123}
+        const res: any = await campaignsApi.create(campaignPayload);
+        if (res && res.id_campaign) {
+          newCampaignId = res.id_campaign;
+        } else {
+          // Fallback por si acaso
+          try {
+            const allCampaigns: any = await campaignsApi.list();
+            const justCreated = Array.isArray(allCampaigns)
+              ? allCampaigns.find((c: any) => c.name === campaignPayload.name && c.id_company === campaignPayload.id_company)
+              : null;
+            if (justCreated) {
+              newCampaignId = justCreated.id_campaign;
+            }
+          } catch (err) {
+            console.log("No se pudo obtener id de campaña creada:", err);
+          }
+        }
       }
 
       // 3. Payload de Canal
@@ -244,17 +262,14 @@ export default function CreateCampaignScreen() {
         }
       }
 
-      // 4. Crear link trackeable inicial
-      if (!campaignId && createdCampaign && createdCampaign.id_campaign) {
+      // 4. Crear link trackeable inicial (solo en creación)
+      if (!campaignId && newCampaignId) {
         try {
-          const destination = 'https://analitika.com';
-          if (!destination) {
-            console.warn('Advertencia: El campo destination está vacío al crear el tracking link.');
-          }
           await trackingLinksApi.create({
-            id_campaign: createdCampaign.id_campaign,
-            destination: destination,
+            id_campaign: newCampaignId,
+            destination: 'https://analitika.com',
           });
+          console.log("Link trackeable creado automáticamente para campaña:", newCampaignId);
         } catch (linkErr) {
           console.log("Error creating initial link:", linkErr);
         }
@@ -295,7 +310,7 @@ export default function CreateCampaignScreen() {
           activeOpacity={0.75}
           onPress={() => router.push('/(app)/(tabs)/account')}
         >
-          <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
+          <AccountAvatar size={36} />
         </TouchableOpacity>
       </View>
 
@@ -417,16 +432,37 @@ export default function CreateCampaignScreen() {
 
         {/* Generar Link Trackeable */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Generar Link Trackeable</Text>
-          <View style={styles.linkBox} />
+          <Text style={styles.fieldLabel}>Link Trackeable</Text>
+          <View style={[styles.linkBox, { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md }]}>
+            {trackUrl ? (
+              <>
+                <Text style={{ flex: 1, color: colors.textPrimary, fontSize: typography.sizeMd }} numberOfLines={1}>
+                  {trackUrl}
+                </Text>
+                <TouchableOpacity 
+                  style={{ padding: spacing.sm, backgroundColor: '#EDE9FE', borderRadius: radii.md }}
+                  onPress={async () => {
+                    await Clipboard.setStringAsync(trackUrl);
+                    Alert.alert('¡Copiado!', 'El link ha sido copiado al portapapeles.');
+                  }}
+                >
+                  <Ionicons name="copy-outline" size={20} color={colors.primary} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={{ flex: 1, color: palette.purple3, fontSize: typography.sizeSm, fontStyle: 'italic' }}>
+                {campaignId ? 'No se encontró link trackeable' : 'El link se generará automáticamente al crear la campaña.'}
+              </Text>
+            )}
+          </View>
         </View>
 
         {/* CTA */}
         <TouchableOpacity
-          style={[styles.createButton, loading && { opacity: 0.7 }]}
+          style={[styles.createButton, (loading || !profile || !profile.id_company) && { opacity: 0.7 }]}
           activeOpacity={0.85}
           onPress={handleCreate}
-          disabled={loading || sessionLoading}
+          disabled={loading || sessionLoading || !profile || !profile.id_company}
         >
           {loading ? (
             <ActivityIndicator color={colors.textOnPrimary} />

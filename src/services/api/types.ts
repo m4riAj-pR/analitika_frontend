@@ -24,9 +24,9 @@ export interface Campaign {
 export interface TrackingLink {
   id_link: number;
   id_campaign: number;   // relación: tracking_link → campaign
-  id_channel?: number | null; // relación: tracking_link → channel
+  id_channel: number | null; // relación: tracking_link → channel
   destination: string;
-  created_at?: string;
+  created_at: string;
 }
 
 // Channel es independiente de campaigns.
@@ -34,13 +34,13 @@ export interface TrackingLink {
 export interface Channel {
   id_channel: number;
   name: string;
-  description?: string | null;
+  description: string | null;
 }
 
 // Payload de creación: NUNCA incluye id_campaign
 export interface ChannelPayload {
   name: string;
-  description?: string | null;
+  description: string | null;
 }
 
 export interface TopCampaign {
@@ -50,3 +50,23 @@ export interface TopCampaign {
   conversions: number;
   roi: number;
 }
+
+export interface User {
+  id_user: number;
+  id_person: number;
+  id_role: number;
+  id_company: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  is_active: boolean;
+}
+
+export interface Company {
+  id_company: number;
+  name: string;
+  tax_id: string;
+  is_active: boolean;
+}
+
