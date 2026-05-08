@@ -444,9 +444,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginTop: 4,
   },
-  statusBadgeActive: {
-    backgroundColor: '#D1FAE5',
-  },
   statusBadgeInactive: {
     backgroundColor: '#E2E8F0',
   },

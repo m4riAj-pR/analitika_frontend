@@ -64,7 +64,7 @@ export default function Login() {
             }
 
         } catch (error: any) {
-            Alert.alert("Error de Inicio de Sesión", error.message || "Credenciales incorrectas o usuario no registrado.");
+            console.error("Login Error:", error.message || "Credenciales incorrectas");
         } finally {
             setLoading(false);
         }

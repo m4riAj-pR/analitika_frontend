@@ -144,3 +144,10 @@ export async function request<T>(
     clearTimeout(timeoutId);
   }
 }
+
+export default {
+  get: <T>(url: string, options?: any) => request<T>(url, { ...options, method: 'GET' }),
+  post: <T>(url: string, data?: any, options?: any) => request<T>(url, { ...options, method: 'POST', body: JSON.stringify(data) }),
+  put: <T>(url: string, data?: any, options?: any) => request<T>(url, { ...options, method: 'PUT', body: JSON.stringify(data) }),
+  delete: <T>(url: string, options?: any) => request<T>(url, { ...options, method: 'DELETE' }),
+};

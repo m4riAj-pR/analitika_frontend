@@ -189,7 +189,9 @@ export default function AccountScreen() {
           <View style={styles.infoContainer}>
             <Text style={styles.userName}>{fullName}</Text>
             <View style={styles.badgeContainer}>
-              <Text style={styles.badgeText}>Administrador</Text>
+              <Text style={styles.badgeText}>
+                {profile?.role_name || (profile?.id_role === 1 ? 'Super Admin' : profile?.id_role === 2 ? 'Owner' : profile?.id_role === 3 ? 'Management' : 'Usuario')}
+              </Text>
             </View>
 
             <View style={styles.divider} />

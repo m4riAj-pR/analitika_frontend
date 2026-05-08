@@ -1,38 +1,60 @@
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Image,
-  TouchableOpacity,
   ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
   ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../../src/theme/colors';
+import AccountAvatar from '../../src/components/AccountAvatar';
 import api from '../../src/services/api/client';
+import { colors, radii, shadows, typography } from '../../src/theme/colors';
 
 interface UserRoleGroup {
   id_user: number;
   email: string;
+  id_role: number;
   role_name: string;
 }
 
 export default function AdminRoles() {
   const insets = useSafeAreaInsets();
-  const [data, setData] = useState<{ owners: UserRoleGroup[], managements: UserRoleGroup[] }>({ owners: [], managements: [] });
+  const router = useRouter();
+  const { companyId, companyName } = useLocalSearchParams();
+
+  console.log("ROLES PARAMS:", { companyId, companyName });
+
+  const [data, setData] = useState<{ owners: UserRoleGroup[], managements: UserRoleGroup[] }>({
+    owners: [],
+    managements: []
+  });
   const [loading, setLoading] = useState(true);
+
+  // Estado para edición
+  const [selectedUser, setSelectedUser] = useState<UserRoleGroup | null>(null);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [companyId]);
 
   const fetchUsers = async () => {
     try {
-      const response: any = await api.get('/analitika/admin/users-by-role');
-      setData(response);
+      setLoading(true);
+      const url = companyId
+        ? `/analitika/admin/users-by-role?id_company=${companyId}`
+        : '/analitika/admin/users-by-role';
+
+      console.log("FETCHING USERS FROM URL:", url);
+      const response: any = await api.get(url);
+      setData(response || { owners: [], managements: [] });
     } catch (error) {
       console.error('Error fetching users by role:', error);
     } finally {
@@ -40,11 +62,45 @@ export default function AdminRoles() {
     }
   };
 
-  const UserItem = ({ email }: { email: string }) => (
+  const handleUpdateRole = async (newRoleId: number) => {
+    if (!selectedUser) return;
+
+    if (selectedUser.id_role === newRoleId) {
+      setSelectedUser(null);
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      await api.put(`/analitika/admin/users/${selectedUser.id_user}/role`, { id_role: newRoleId });
+      Alert.alert('Éxito', 'Rol actualizado correctamente');
+      setSelectedUser(null);
+      fetchUsers(); // Recargar lista
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo actualizar el rol');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const UserItem = ({ user }: { user: UserRoleGroup }) => (
     <View style={styles.userCard}>
-      <Text style={styles.userEmail}>{email}</Text>
-      <TouchableOpacity style={styles.editButton}>
-        <Feather name="edit-3" size={20} color="#000" />
+      <View style={styles.userInfo}>
+        <View style={styles.avatarPlaceholder}>
+          <Text style={styles.avatarText}>{user.email.charAt(0).toUpperCase()}</Text>
+        </View>
+        <View style={styles.userTextContainer}>
+          <Text style={styles.userEmail} numberOfLines={1}>{user.email}</Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleBadgeText}>{user.role_name}</Text>
+          </View>
+        </View>
+      </View>
+      <TouchableOpacity
+        style={styles.editButton}
+        onPress={() => setSelectedUser(user)}
+      >
+        <Feather name="edit-2" size={18} color={colors.primary} />
       </TouchableOpacity>
     </View>
   );
@@ -53,91 +109,372 @@ export default function AdminRoles() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <View style={styles.logoWrapper}>
-          <Image 
+          <Image
             source={require('../../assets/images/icon.png')}
             style={styles.logoImage}
             resizeMode="contain"
           />
         </View>
-        <TouchableOpacity style={styles.avatarButton}>
-          <Ionicons name="person-circle" size={42} color={colors.primary} />
+        <TouchableOpacity
+          style={styles.avatarButton}
+          onPress={() => router.push('/(admin)/profile')}
+        >
+          <AccountAvatar size={42} />
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.title}>Roles</Text>
+      <View style={styles.titleContainer}>
+        <Text style={styles.title}>Roles</Text>
+        {companyName && (
+          <View style={styles.filterBadge}>
+            <Ionicons name="business" size={12} color={colors.primary} />
+            <Text style={styles.filterText} numberOfLines={1}>{companyName}</Text>
+            <TouchableOpacity onPress={() => router.setParams({ companyId: '', companyName: '' })}>
+              <Ionicons name="close-circle" size={16} color="#666" />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
 
       {loading ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
+
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{data.owners.length} Owners</Text>
-            {data.owners.map(user => <UserItem key={user.id_user} email={user.email} />)}
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionDot} />
+              <Text style={styles.sectionTitle}>Owners ({data.owners.length})</Text>
+            </View>
+            {data.owners.length > 0 ? (
+              data.owners.map(user => <UserItem key={user.id_user} user={user} />)
+            ) : (
+              <Text style={styles.emptyText}>No hay usuarios con este rol</Text>
+            )}
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{data.managements.length} Managments</Text>
-            {data.managements.map(user => <UserItem key={user.id_user} email={user.email} />)}
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionDot, { backgroundColor: colors.secondary }]} />
+              <Text style={styles.sectionTitle}>Management ({data.managements.length})</Text>
+            </View>
+            {data.managements.length > 0 ? (
+              data.managements.map(user => <UserItem key={user.id_user} user={user} />)
+            ) : (
+              <Text style={styles.emptyText}>No hay usuarios con este rol</Text>
+            )}
           </View>
 
         </ScrollView>
       )}
+
+      {/* MODAL DE EDICIÓN DE ROL */}
+      <Modal
+        visible={!!selectedUser}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSelectedUser(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Gestionar Acceso</Text>
+            <Text style={styles.modalSubtitle}>Selecciona el nuevo nivel de permisos para {selectedUser?.email}</Text>
+
+            {updating ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.updatingText}>Actualizando rol...</Text>
+              </View>
+            ) : (
+              <View style={styles.optionsContainer}>
+                <TouchableOpacity
+                  style={[styles.roleOption, selectedUser?.id_role === 2 && styles.activeOption]}
+                  onPress={() => handleUpdateRole(2)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.optionHeader}>
+                    <MaterialCommunityIcons
+                      name="shield-account"
+                      size={24}
+                      color={selectedUser?.id_role === 2 ? '#FFF' : colors.primary}
+                    />
+                    <Text style={[styles.roleOptionText, selectedUser?.id_role === 2 && styles.activeOptionText]}>Owner</Text>
+                  </View>
+                  <Text style={[styles.optionDesc, selectedUser?.id_role === 2 && styles.activeOptionText]}>
+                    Acceso total a la configuración y gestión de la empresa.
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.roleOption, selectedUser?.id_role === 3 && styles.activeOption]}
+                  onPress={() => handleUpdateRole(3)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.optionHeader}>
+                    <MaterialCommunityIcons
+                      name="account-cog"
+                      size={24}
+                      color={selectedUser?.id_role === 3 ? '#FFF' : colors.primary}
+                    />
+                    <Text style={[styles.roleOptionText, selectedUser?.id_role === 3 && styles.activeOptionText]}>Management</Text>
+                  </View>
+                  <Text style={[styles.optionDesc, selectedUser?.id_role === 3 && styles.activeOptionText]}>
+                    Gestión operativa y visualización de analíticas.
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => setSelectedUser(null)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cerrar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
+  container: {
+    flex: 1,
+    backgroundColor: '#FBFAFF'
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    height: 100,
+    height: 80,
   },
   logoWrapper: {
     flex: 1,
-    marginLeft: -15,
+    marginLeft: -10,
   },
   logoImage: {
     width: 180,
-    height: 250,
+    height: 180,
   },
-  avatarButton: { padding: 4 },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.primary,
+  avatarButton: {
+    padding: 4,
+    borderRadius: 22,
+    backgroundColor: '#FFF',
+    ...shadows.card,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  title: {
+    fontSize: typography.size3xl,
+    fontWeight: typography.bold,
+    color: colors.primary,
+  },
+  filterBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#F1F3F5',
+    ...shadows.card,
+    maxWidth: '65%',
+  },
+  filterText: {
+    fontSize: typography.sizeSm,
+    color: colors.primary,
+    fontWeight: typography.semibold,
+    flexShrink: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 100
+  },
+  section: {
     marginBottom: 25,
   },
-  scrollContent: { paddingHorizontal: 24, paddingBottom: 150 },
-  section: {
-    marginBottom: 30,
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    gap: 10,
+  },
+  sectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 15,
+    fontSize: typography.sizeLg,
+    fontWeight: typography.bold,
+    color: '#1A1A1A',
   },
   userCard: {
     flexDirection: 'row',
-    backgroundColor: '#E2D8F7',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 16,
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F1F3F5',
+    ...shadows.card,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  avatarPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F3F0FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  userTextContainer: {
+    flex: 1,
+    gap: 2,
   },
   userEmail: {
-    fontSize: 16,
+    fontSize: typography.sizeMd,
     color: '#333',
-    textDecorationLine: 'underline',
+    fontWeight: typography.semibold,
+  },
+  roleBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: '#F8F9FA',
+  },
+  roleBadgeText: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
   editButton: {
-    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F3F0FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: typography.sizeSm,
+    color: '#999',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 10,
+    marginBottom: 20,
+  },
+
+  // MODAL STYLES
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 5, 40, 0.7)',
+    justifyContent: 'flex-end', // Slide from bottom feel
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    paddingBottom: 40,
+    ...shadows.card,
+  },
+  modalTitle: {
+    fontSize: typography.size2xl,
+    fontWeight: typography.bold,
+    color: colors.primary,
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: typography.sizeSm,
+    color: colors.textBody,
+    marginBottom: 28,
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    gap: 16,
+  },
+  updatingText: {
+    fontSize: typography.sizeMd,
+    color: colors.primary,
+    fontWeight: typography.semibold,
+  },
+  optionsContainer: {
+    width: '100%',
+    gap: 16,
+  },
+  roleOption: {
+    width: '100%',
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: '#F8F9FA',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  activeOption: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  optionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 4,
+  },
+  roleOptionText: {
+    fontSize: typography.sizeLg,
+    fontWeight: typography.bold,
+    color: colors.primary,
+  },
+  activeOptionText: {
+    color: '#FFF',
+  },
+  optionDesc: {
+    fontSize: typography.sizeSm,
+    color: '#666',
+    marginLeft: 36,
+    lineHeight: 18,
+  },
+  modalActions: {
+    marginTop: 10,
+  },
+  cancelButton: {
+    width: '100%',
+    padding: 16,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: typography.sizeMd,
+    color: '#666',
+    fontWeight: typography.semibold,
   },
 });

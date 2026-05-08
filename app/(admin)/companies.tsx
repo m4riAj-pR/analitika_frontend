@@ -12,6 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, shadows } from '../../src/theme/colors';
 import api from '../../src/services/api/client';
+import AccountAvatar from '../../src/components/AccountAvatar';
+import { useRouter } from 'expo-router';
 
 interface CompanyAdmin {
   id_company: number;
@@ -22,8 +24,10 @@ interface CompanyAdmin {
 
 export default function AdminCompanies() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [companies, setCompanies] = useState<CompanyAdmin[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchCompanies();
@@ -40,19 +44,49 @@ export default function AdminCompanies() {
     }
   };
 
-  const renderItem = ({ item }: { item: CompanyAdmin }) => (
-    <View style={styles.cardContainer}>
-      <TouchableOpacity style={styles.companyHeader} activeOpacity={0.8}>
-        <Text style={styles.companyName}>{item.nombre_empresa}</Text>
-        <Ionicons name="chevron-down" size={24} color="#FFF" />
-      </TouchableOpacity>
-      
-      <View style={styles.statsContainer}>
-        <Text style={styles.statsText}>{item.owners} Owners</Text>
-        <Text style={styles.statsText}>{item.managements} managments</Text>
+  const toggleExpand = (id: number) => {
+    setExpandedId(expandedId === id ? null : id);
+  };
+
+  const renderItem = ({ item }: { item: CompanyAdmin }) => {
+    const isExpanded = expandedId === item.id_company;
+
+    return (
+      <View style={[styles.cardContainer, isExpanded && styles.cardExpandedBorder]}>
+        <TouchableOpacity 
+          style={[styles.companyHeader, isExpanded && styles.companyHeaderActive]} 
+          activeOpacity={0.8}
+          onPress={() => toggleExpand(item.id_company)}
+        >
+          <Text style={[styles.companyName, isExpanded && styles.companyNameActive]}>
+            {item.nombre_empresa}
+          </Text>
+          <Ionicons 
+            name={isExpanded ? "chevron-up" : "chevron-down"} 
+            size={24} 
+            color={isExpanded ? colors.primary : "#666"} 
+          />
+        </TouchableOpacity>
+        
+        {isExpanded && (
+          <View style={styles.statsContainer}>
+            <View style={styles.statsInfo}>
+              <Text style={styles.statsText}>{item.owners} Owners</Text>
+              <Text style={styles.statsText}>{item.managements} managments</Text>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.manageButton}
+              onPress={() => router.push({ pathname: '/(admin)/roles', params: { companyId: item.id_company, companyName: item.nombre_empresa } })}
+            >
+              <Text style={styles.manageButtonText}>Gestionar Usuarios</Text>
+              <Ionicons name="people-outline" size={18} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -64,12 +98,15 @@ export default function AdminCompanies() {
             resizeMode="contain"
           />
         </View>
-        <TouchableOpacity style={styles.avatarButton}>
-          <Ionicons name="person-circle" size={42} color={colors.primary} />
+        <TouchableOpacity 
+          style={styles.avatarButton}
+          onPress={() => router.push('/(admin)/profile')}
+        >
+          <AccountAvatar size={42} />
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.title}>Companies</Text>
+      <Text style={styles.title}>Empresas</Text>
 
       {loading ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
@@ -111,36 +148,64 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 25,
   },
-  listContent: { paddingHorizontal: 24, paddingBottom: 120 },
+  listContent: { paddingHorizontal: 24, paddingBottom: 150 },
   cardContainer: {
-    marginBottom: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
+    marginBottom: 16,
+    borderRadius: 20,
+    backgroundColor: '#F8F9FA', // Color base más suave
+    borderWidth: 1.5,
+    borderColor: '#F1F3F5',
+  },
+  cardExpandedBorder: {
+    borderColor: '#AD8DF2',
+    backgroundColor: '#FFF',
   },
   companyHeader: {
-    backgroundColor: colors.primary,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 18,
-    borderRadius: 12,
+    paddingVertical: 20,
+  },
+  companyHeaderActive: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F3F5',
   },
   companyName: {
-    color: '#FFF',
-    fontSize: 20,
+    color: '#495057',
+    fontSize: 18,
     fontWeight: '600',
   },
+  companyNameActive: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
   statsContainer: {
-    backgroundColor: '#D8C9F1',
-    padding: 15,
-    marginTop: 4,
-    borderRadius: 12,
-    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#FAF9FE',
+  },
+  statsInfo: {
+    marginBottom: 15,
   },
   statsText: {
-    fontSize: 16,
-    color: '#333',
-    marginVertical: 2,
+    fontSize: 15,
+    color: '#666',
+    marginVertical: 3,
+    fontWeight: '500',
+  },
+  manageButton: {
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 5,
+  },
+  manageButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

@@ -53,7 +53,16 @@ export const registerUser = async (data: any) => {
 };
 
 export const me = async () => {
-  return await getUser();
+  try {
+    const res: any = await request("/me");
+    if (res) {
+      await saveUser(res);
+    }
+    return res;
+  } catch (err) {
+    console.error("Error fetching fresh /me info:", err);
+    return await getUser(); // Fallback to cache
+  }
 };
 
 export const logoutUser = async () => {
