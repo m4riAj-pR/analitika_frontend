@@ -42,13 +42,24 @@ function Header() {
         />
       </View>
 
-      <TouchableOpacity
-        style={styles.profileButton}
-        activeOpacity={0.7}
-        onPress={() => router.push('/(app)/(tabs)/account')}
-      >
-        <AccountAvatar size={42} />
-      </TouchableOpacity>
+      <View style={styles.headerActions}>
+        <TouchableOpacity
+          style={styles.notificationButton}
+          activeOpacity={0.7}
+          onPress={() => router.push('/(app)/notifications')}
+        >
+          <Ionicons name="notifications" size={28} color={colors.primary} />
+          <View style={styles.unreadDot} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.profileButton}
+          activeOpacity={0.7}
+          onPress={() => router.push('/(app)/account' as any)}
+        >
+          <AccountAvatar size={42} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -311,7 +322,27 @@ const styles = StyleSheet.create({
   },
   logoWrapper: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
   logoImage: { width: 300, height: 300 },
-  profileButton: { padding: 4 },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
+  notificationButton: {
+    padding: 4,
+    position: 'relative',
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EF4444',
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  profileButton: { padding: 4, justifyContent: 'center' },
 
   listTitle: {
     fontSize: 28,

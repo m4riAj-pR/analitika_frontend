@@ -44,7 +44,7 @@ const podiumStyles = StyleSheet.create({
 // ─── Ranking card ─────────────────────────────────────────────────────────────
 function RankingCard({ item, rank }: { item: TopCampaign; rank: number }) {
   const isTop = rank === 1;
-  const accent = isTop ? '#38bdf8' : 'transparent';
+  const accent = isTop ? palette.purple3 : 'transparent';
 
   const formatNumber = (n?: number | null) =>
     n == null ? '—' : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
@@ -59,24 +59,21 @@ function RankingCard({ item, rank }: { item: TopCampaign; rank: number }) {
         }
       </View>
 
-      <PodiumIcon color={isTop ? '#38bdf8' : 'rgba(255,255,255,0.5)'} />
+      <PodiumIcon color={isTop ? palette.purple3 : 'rgba(255,255,255,0.5)'} />
 
       {/* info */}
       <View style={styles.cardInfo}>
         <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
         <View style={styles.metaRow}>
-          <Ionicons name="hand-right-outline" size={11} color="rgba(255,255,255,0.6)" />
+          <Ionicons name="star" size={11} color="rgba(255,255,255,0.6)" />
           <Text style={styles.metaText}>{formatNumber(item.clicks)} clics</Text>
-          <Text style={styles.metaDot}>·</Text>
-          <Ionicons name="refresh-outline" size={11} color="rgba(255,255,255,0.6)" />
-          <Text style={styles.metaText}>{formatNumber(item.conversions)} conv.</Text>
         </View>
       </View>
 
       {/* ROI pill */}
       {item.roi != null && (
         <View style={[styles.roiPill, isTop && styles.roiPillTop]}>
-          <Text style={[styles.roiText, isTop && { color: '#38bdf8' }]}>
+          <Text style={[styles.roiText, isTop && { color: palette.purple3 }]}>
             {item.roi >= 0 ? '+' : ''}{item.roi.toFixed(0)}%
           </Text>
         </View>
@@ -151,6 +148,7 @@ const emptyStyles = StyleSheet.create({
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function RankingScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   // Rango: últimos 30 días
@@ -172,8 +170,8 @@ export default function RankingScreen() {
           <Text style={styles.headerTitle}>Top Campañas</Text>
           <Text style={styles.headerSub}>Últimos 30 días</Text>
         </View>
-        <TouchableOpacity style={styles.avatarBtn} activeOpacity={0.75}>
-          <AccountAvatar size={36} />
+        <TouchableOpacity style={styles.avatarBtn} activeOpacity={0.75} onPress={() => router.push('/(app)/account' as any)}>
+          <AccountAvatar size={42} />
         </TouchableOpacity>
       </View>
 
@@ -227,11 +225,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
   },
   headerTitle: {
-    fontSize: typography.size2xl,
+    fontSize: 28,
     fontWeight: typography.bold,
     color: colors.primary,
   },
@@ -242,8 +240,8 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   avatarBtn: {
-    width: 40,
-    height: 40,
+    width: 46,
+    height: 46,
     borderRadius: radii.pill,
     backgroundColor: colors.bgCard,
     alignItems: 'center',
@@ -284,15 +282,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     borderWidth: 2,
     borderColor: 'transparent',
-    ...shadows.card,
   },
   cardTop: {
-    borderColor: '#38bdf8',
-    shadowColor: '#38bdf8',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    borderColor: palette.purple3,
   },
 
   /* Rank badge */
@@ -321,6 +313,6 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
-  roiPillTop: { backgroundColor: 'rgba(56,189,248,0.15)' },
+  roiPillTop: { backgroundColor: 'rgba(173, 141, 242, 0.15)' },
   roiText: { fontSize: 12, fontWeight: typography.bold, color: 'rgba(255,255,255,0.85)' },
 });

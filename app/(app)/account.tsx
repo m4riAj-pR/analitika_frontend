@@ -13,10 +13,11 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useProfile } from '../../../src/hooks/useProfile';
-import { authApi } from '../../../src/services/api/auth';
-import { removeToken } from '../../../src/services/api/client';
-import { colors, palette, radii, shadows, spacing, typography } from '../../../src/theme/colors';
+import { useProfile } from '../../src/hooks/useProfile';
+import { authApi } from '../../src/services/api/auth';
+import { removeToken } from '../../src/services/api/client';
+import { colors, palette, radii, shadows, spacing, typography } from '../../src/theme/colors';
+import AccountAvatar from '../../src/components/AccountAvatar';
 
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
@@ -104,9 +105,7 @@ export default function AccountScreen() {
         
         {/* AVATAR TOP ABSOLUTE */}
         <View style={styles.avatarContainer}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={54} color={colors.primary} />
-          </View>
+          <AccountAvatar size={100} />
         </View>
 
         {isEditing ? (
@@ -267,7 +266,7 @@ const styles = StyleSheet.create({
     marginBottom: 60, // Espacio para que la tarjeta flote sobre el fondo
   },
   headerTitle: {
-    fontSize: typography.size2xl,
+    fontSize: 28,
     fontWeight: typography.bold,
     color: colors.primary,
   },
@@ -316,11 +315,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 4,
     borderColor: '#fff',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 5,
   },
 
   /* VISTA INFO MODO LECTURA */
