@@ -11,11 +11,11 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, shadows, typography } from '../../src/theme/colors';
-import api from '../../src/services/api/api';
+import { colors, shadows } from '../../src/theme/colors';
+import { notificationsApi } from '../../src/services/api/notifications';
 
 interface Notification {
-  id_notification: int;
+  id_notification: number;
   title: string;
   message: string;
   type: string;
@@ -32,8 +32,10 @@ export default function NotificationsScreen() {
 
   const fetchNotifications = async () => {
     try {
-      const response = await api.get('/analitika/notifications/');
-      setNotifications(response.data);
+      const response: any = await notificationsApi.getNotifications();
+      // Ajuste para manejar la estructura de respuesta (podría venir en .response o directo)
+      const data = Array.isArray(response) ? response : (response?.response || []);
+      setNotifications(data);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
@@ -44,7 +46,7 @@ export default function NotificationsScreen() {
 
   const markAsRead = async (id: number) => {
     try {
-      await api.put(`/analitika/notifications/${id}/read`);
+      await notificationsApi.markAsRead(id);
       setNotifications(prev => 
         prev.map(n => n.id_notification === id ? { ...n, is_read: true } : n)
       );

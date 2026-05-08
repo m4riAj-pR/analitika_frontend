@@ -50,13 +50,19 @@ export default function Login() {
 
         try {
             setLoading(true);
-            await authApi.login({
+            const response = await authApi.login({
                 email: email.trim(),
                 password: password
             });
 
-            // Si el login es exitoso
-            router.replace('/(app)/(tabs)/dashboard');
+            // Si el login es exitoso, redirigir según el rol
+            const user = response?.user || response;
+            if (user?.id_role === 1) {
+                router.replace('/(admin)/companies');
+            } else {
+                router.replace('/(app)/(tabs)/dashboard');
+            }
+
         } catch (error: any) {
             Alert.alert("Error de Inicio de Sesión", error.message || "Credenciales incorrectas o usuario no registrado.");
         } finally {

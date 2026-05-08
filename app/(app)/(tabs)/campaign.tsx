@@ -132,7 +132,7 @@ export default function CampaignScreen() {
             {/* ── HEADER ── */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Campañas</Text>
-                <TouchableOpacity onPress={() => router.push('/(app)/(tabs)/account')}>
+                <TouchableOpacity onPress={() => router.push('/account')}>
                     <AccountAvatar size={42} />
                 </TouchableOpacity>
             </View>

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,13 +12,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import AccountAvatar from '../../../src/components/AccountAvatar';
 import { LineChart } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AccountAvatar from '../../../src/components/AccountAvatar';
 import { campaignsApi } from '../../../src/services/api/campaign';
+import { notificationsApi } from '../../../src/services/api/notifications';
 import { getClicsPorDia, getMetricas, getTablaClic } from '../../../src/services/api/stats';
 import type { Campaign } from '../../../src/services/api/types';
-import { colors, palette, radii, shadows, spacing, typography } from '../../../src/theme/colors';
+import { colors, shadows } from '../../../src/theme/colors';
 
 const { width } = Dimensions.get('window');
 
@@ -30,12 +31,12 @@ const formatCurrency = (value: number) =>
   }).format(value);
 
 // ─── Header Component ────────────────────────────────────────────────────────
-function Header() {
+function Header({ unreadCount }: { unreadCount: number }) {
   const router = useRouter();
   return (
     <View style={styles.headerContainer}>
       <View style={styles.logoWrapper}>
-        <Image 
+        <Image
           source={require('../../../assets/images/icon.png')}
           style={styles.logoImage}
           resizeMode="contain"
@@ -49,7 +50,7 @@ function Header() {
           onPress={() => router.push('/(app)/notifications')}
         >
           <Ionicons name="notifications" size={28} color={colors.primary} />
-          <View style={styles.unreadDot} />
+          {unreadCount > 0 && <View style={styles.unreadDot} />}
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -142,6 +143,7 @@ export default function DashboardScreen() {
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const [loadingStats, setLoadingStats] = useState(false);
   const [metricas, setMetricas] = useState<any>(null);
@@ -155,17 +157,17 @@ export default function DashboardScreen() {
       .getAll()
       .then((data: any) => {
         const all = Array.isArray(data) ? data : (data?.response || []);
-        
+
         // La lista principal solo muestra las activas
         const activeOnly = all.filter((c: Campaign) => String(c.status).toLowerCase() === 'active');
         setCampaigns(activeOnly);
 
         if (campaignId) {
-            const found = all.find((c: Campaign) => String(c.id_campaign) === String(campaignId));
-            if (found) {
-                setSelectedCampaign(found);
-                return;
-            }
+          const found = all.find((c: Campaign) => String(c.id_campaign) === String(campaignId));
+          if (found) {
+            setSelectedCampaign(found);
+            return;
+          }
         }
         setSelectedCampaign(null);
       })
@@ -175,6 +177,11 @@ export default function DashboardScreen() {
         setSelectedCampaign(null);
       })
       .finally(() => setLoadingCampaigns(false));
+
+    // Cargar conteo de notificaciones
+    notificationsApi.getUnreadCount()
+      .then((res: any) => setUnreadCount(res.count || 0))
+      .catch(() => setUnreadCount(0));
   }, [campaignId]);
 
   // 2️⃣ Cargar estadísticas
@@ -221,26 +228,26 @@ export default function DashboardScreen() {
   if (!selectedCampaign) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Header />
-        <Text style={styles.listTitle}>DashBoards</Text>
-        
+        <Header unreadCount={unreadCount} />
+        <Text style={styles.listTitle}>Dashboard</Text>
+
         {campaigns.length === 0 ? (
-            <EmptyState />
+          <EmptyState />
         ) : (
-            <FlatList
-              data={campaigns}
-              keyExtractor={(item) => String(item.id_campaign)}
-              renderItem={({ item, index }) => (
-                <CampaignCard
-                  campaign={item}
-                  index={index}
-                  onSelect={() => setSelectedCampaign(item)}
-                />
-              )}
-              contentContainerStyle={[styles.listScrollContent, { paddingBottom: insets.bottom + 100 }]}
-              showsVerticalScrollIndicator={false}
-              ItemSeparatorComponent={() => <View style={{ height: 20 }} />}
-            />
+          <FlatList
+            data={campaigns}
+            keyExtractor={(item) => String(item.id_campaign)}
+            renderItem={({ item, index }) => (
+              <CampaignCard
+                campaign={item}
+                index={index}
+                onSelect={() => setSelectedCampaign(item)}
+              />
+            )}
+            contentContainerStyle={[styles.listScrollContent, { paddingBottom: insets.bottom + 100 }]}
+            showsVerticalScrollIndicator={false}
+            ItemSeparatorComponent={() => <View style={{ height: 20 }} />}
+          />
         )}
       </View>
     );
@@ -321,7 +328,7 @@ const styles = StyleSheet.create({
     height: 80,
   },
   logoWrapper: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
-  logoImage: { width: 300, height: 300 },
+  logoImage: { width: 20, height: 10 },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
