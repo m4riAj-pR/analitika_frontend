@@ -68,28 +68,34 @@ function Header({ unreadCount }: { unreadCount: number }) {
 // ─── Campaign Card ───────────────────────────────────────────────────────────
 function CampaignCard({ campaign, onSelect, index }: { campaign: Campaign; onSelect: () => void; index: number }) {
   const isAltDesign = index % 2 === 0;
+  const isInactive = String(campaign.status).toLowerCase() !== 'active';
 
   return (
-    <View style={styles.cardContainer}>
+    <View style={[styles.cardContainer, isInactive && styles.cardInactive]}>
       {/* Decoración de fondo */}
       <View style={styles.decorationContainer}>
         {isAltDesign ? (
           <View style={styles.barsContainer}>
-            <View style={[styles.bar, { height: '60%' }]} />
-            <View style={[styles.bar, { height: '80%' }]} />
-            <View style={[styles.bar, { height: '100%' }]} />
+            <View style={[styles.bar, { height: '60%' }, isInactive && { backgroundColor: '#CBD5E1' }]} />
+            <View style={[styles.bar, { height: '80%' }, isInactive && { backgroundColor: '#CBD5E1' }]} />
+            <View style={[styles.bar, { height: '100%' }, isInactive && { backgroundColor: '#CBD5E1' }]} />
           </View>
         ) : (
-          <View style={styles.circleDecoration} />
+          <View style={[styles.circleDecoration, isInactive && { backgroundColor: '#CBD5E1' }]} />
         )}
       </View>
 
       <View style={styles.cardInfo}>
-        <Text style={styles.cardName}>{campaign.name}</Text>
+        <Text style={[styles.cardName, isInactive && { color: '#64748B' }]}>{campaign.name}</Text>
+        <View style={[styles.statusBadgeInline, isInactive ? styles.statusBadgeInactive : styles.statusBadgeActive]}>
+          <Text style={styles.statusBadgeTextInline}>
+            {String(campaign.status).toUpperCase()}
+          </Text>
+        </View>
       </View>
 
       <TouchableOpacity
-        style={styles.cardButton}
+        style={[styles.cardButton, isInactive && { backgroundColor: '#94A3B8' }]}
         activeOpacity={0.8}
         onPress={onSelect}
       >
@@ -158,9 +164,8 @@ export default function DashboardScreen() {
       .then((data: any) => {
         const all = Array.isArray(data) ? data : (data?.response || []);
 
-        // La lista principal solo muestra las activas
-        const activeOnly = all.filter((c: Campaign) => String(c.status).toLowerCase() === 'active');
-        setCampaigns(activeOnly);
+        // Mostramos todas las campañas (activas e inactivas)
+        setCampaigns(all);
 
         if (campaignId) {
           const found = all.find((c: Campaign) => String(c.id_campaign) === String(campaignId));
@@ -229,7 +234,6 @@ export default function DashboardScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <Header unreadCount={unreadCount} />
-        <Text style={styles.listTitle}>Dashboard</Text>
 
         {campaigns.length === 0 ? (
           <EmptyState />
@@ -327,8 +331,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     height: 80,
   },
-  logoWrapper: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
-  logoImage: { width: 20, height: 10 },
+  logoWrapper: { flex: 80, alignItems: 'flex-start', justifyContent: 'center' },
+  logoImage: { width: 180, height: 180, marginTop: 100, marginLeft: -12 },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -355,7 +359,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: colors.primary,
-    paddingHorizontal: 24,
+    paddingHorizontal: 30,
     marginBottom: 20,
   },
   listScrollContent: { paddingHorizontal: 24 },
@@ -369,6 +373,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     position: 'relative',
     overflow: 'hidden',
+  },
+  cardInactive: {
+    backgroundColor: '#F1F5F9',
   },
   decorationContainer: {
     position: 'absolute',
@@ -430,6 +437,24 @@ const styles = StyleSheet.create({
   chartCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, ...shadows.card },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#000' },
   noDataText: { textAlign: 'center', marginTop: 20, color: '#999' },
+  statusBadgeInline: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  statusBadgeActive: {
+    backgroundColor: '#D1FAE5',
+  },
+  statusBadgeInactive: {
+    backgroundColor: '#E2E8F0',
+  },
+  statusBadgeTextInline: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#475569',
+  },
 });
 
 const emptyStyles = StyleSheet.create({

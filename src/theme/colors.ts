@@ -22,37 +22,37 @@ export const palette = {
 
 export const colors = {
   // --- Marca ---
-  primary:      palette.purple1,   // Botones principales, CTA
+  primary: palette.purple1,   // Botones principales, CTA
   primaryHover: palette.purple2,   // Estado presionado del botón principal
-  secondary:    palette.purple4,   // Botones secundarios, tabs activos
+  secondary: palette.purple4,   // Botones secundarios, tabs activos
 
   // --- Texto ---
-  textPrimary:   palette.purple1,  // Títulos y encabezados
+  textPrimary: palette.purple1,  // Títulos y encabezados
   textSecondary: palette.purple2,  // Subtítulos, labels
-  textMuted:     palette.purple3,  // Placeholders, texto deshabilitado
-  textBody:      '#6B7280',        // Texto de párrafo (legibilidad)
+  textMuted: palette.purple3,  // Placeholders, texto deshabilitado
+  textBody: '#6B7280',        // Texto de párrafo (legibilidad)
   textOnPrimary: palette.white,    // Texto sobre fondo purple1
 
   // --- Fondos ---
-  bgPage:        palette.white,         // Fondo general de la app
-  bgCard:        palette.analogWhite,   // Cards, secciones
-  bgInput:       palette.white,         // Campos de texto
-  bgAccent:      '#EDE9FE',             // Fondo de la card de login/registro
-  bgBlob:        '#C4B5FD',             // Círculos decorativos del splash
+  bgPage: palette.white,         // Fondo general de la app
+  bgCard: palette.analogWhite,   // Cards, secciones
+  bgInput: palette.white,         // Campos de texto
+  bgAccent: '#EDE9FE',             // Fondo de la card de login/registro
+  bgBlob: '#C4B5FD',             // Círculos decorativos del splash
 
   // --- Bordes ---
-  borderInput:   '#DDD6FE',        // Borde de inputs en reposo
-  borderFocus:   palette.purple1,  // Borde de input con foco
+  borderInput: '#DDD6FE',        // Borde de inputs en reposo
+  borderFocus: palette.purple1,  // Borde de input con foco
   borderDivider: '#DDD6FE',        // Líneas divisoras
 
   // --- Estados ---
   success: '#10B981',
-  error:   '#EF4444',
+  error: '#EF4444',
   warning: '#F59E0B',
-  info:    palette.purple2,
+  info: palette.purple2,
 
   // --- Checkbox / Toggle ---
-  checkboxActive:   palette.purple1,
+  checkboxActive: palette.purple1,
   checkboxInactive: '#DDD6FE',
 
   // --- Links ---
@@ -61,20 +61,20 @@ export const colors = {
 
 export const typography = {
   // Tamaños
-  sizeXs:  11,
-  sizeSm:  13,
-  sizeMd:  15,
-  sizeLg:  17,
-  sizeXl:  20,
+  sizeXs: 11,
+  sizeSm: 13,
+  sizeMd: 15,
+  sizeLg: 17,
+  sizeXl: 20,
   size2xl: 24,
   size3xl: 28,
   size4xl: 32,
 
   // Pesos
-  regular:  '400' as const,
-  medium:   '500' as const,
+  regular: '400' as const,
+  medium: '500' as const,
   semibold: '600' as const,
-  bold:     '700' as const,
+  bold: '700' as const,
 
   // Interlineado
   lineHeightSm: 18,
@@ -86,20 +86,20 @@ export const typography = {
 // ESPACIADO — sistema de 4pt
 // ------------------------------------------------------------------
 export const spacing = {
-  xs:  4,
-  sm:  8,
-  md:  12,
-  lg:  16,
-  xl:  24,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
   xxl: 32,
   xxxl: 48,
 } as const;
 
 export const radii = {
-  sm:   8,
-  md:   12,
-  lg:   16,
-  xl:   24,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
   pill: 999,
 } as const;
 

@@ -109,6 +109,37 @@ function MoneyInput({
   );
 }
 
+// ─── Empty State (Replicated from Dashboard) ──────────────────────────────────
+function EmptyState({ 
+  title = "No hay campañas", 
+  subtitle = "Parece que aún no has creado ninguna campaña activa.",
+  ctaText = "Volver",
+  onPress
+}: { 
+  title?: string; 
+  subtitle?: string; 
+  ctaText?: string;
+  onPress: () => void;
+}) {
+  return (
+    <View style={emptyStyles.wrapper}>
+      <View style={emptyStyles.iconCircle}>
+        <Ionicons name="layers-outline" size={52} color={colors.primary} />
+      </View>
+      <Text style={emptyStyles.title}>{title}</Text>
+      <Text style={emptyStyles.subtitle}>{subtitle}</Text>
+      <TouchableOpacity
+        style={emptyStyles.cta}
+        activeOpacity={0.85}
+        onPress={onPress}
+      >
+        <Ionicons name="arrow-back-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+        <Text style={emptyStyles.ctaText}>{ctaText}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function CreateCampaignScreen() {
   const insets = useSafeAreaInsets();
@@ -291,7 +322,16 @@ export default function CreateCampaignScreen() {
       style={[styles.container, { paddingTop: insets.top }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      {/* ── HEADER ── */}
+      {/* Fallback si estamos editando y no se encuentra la campaña */}
+      {campaignId && !name && !loading && !sessionLoading ? (
+        <EmptyState 
+          title="Campaña no encontrada"
+          subtitle="No pudimos encontrar la campaña que intentas editar."
+          onPress={() => router.back()}
+        />
+      ) : (
+        <>
+          {/* ── HEADER ── */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -472,7 +512,9 @@ export default function CreateCampaignScreen() {
             </Text>
           )}
         </TouchableOpacity>
-      </ScrollView>
+          </ScrollView>
+        </>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -694,4 +736,13 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     textAlign: 'center',
   },
+});
+
+const emptyStyles = StyleSheet.create({
+  wrapper: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  iconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F3F0FA', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  title: { fontSize: 20, fontWeight: '700', color: '#000', marginBottom: 10 },
+  subtitle: { textAlign: 'center', color: '#666', marginBottom: 20 },
+  cta: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+  ctaText: { color: '#FFF', fontWeight: '600' },
 });

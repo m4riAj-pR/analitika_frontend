@@ -19,6 +19,31 @@ import { useCampaigns } from '@/src/hooks/useCampaigns';
 import { trackingLinksApi } from '@/src/services/api/tracking';
 import { Campaign } from '@/src/services/api/types';
 
+// ─── Empty State (Replicated from Dashboard) ──────────────────────────────────
+function EmptyState() {
+  const router = useRouter();
+  return (
+    <View style={emptyStyles.wrapper}>
+      <View style={emptyStyles.iconCircle}>
+        <Ionicons name="layers-outline" size={52} color={colors.primary} />
+      </View>
+      <Text style={emptyStyles.title}>No hay campañas</Text>
+      <Text style={emptyStyles.subtitle}>
+        Parece que aún no has creado ninguna campaña activa.
+      </Text>
+      <TouchableOpacity
+        style={emptyStyles.cta}
+        activeOpacity={0.85}
+        onPress={() => router.push('/(app)/create')}
+      >
+        <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+        <Text style={emptyStyles.ctaText}>Crear campaña</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function CampaignScreen() {
     const { campaigns, loading, reload } = useCampaigns();
@@ -144,33 +169,39 @@ export default function CampaignScreen() {
             ) : (
                 <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}>
                     
-                    {/* Sección Campañas Activas (Como Cards del Mockup) */}
-                    <View style={styles.activeSection}>
-                        {activeCampaigns.map(renderActiveCard)}
-                        {activeCampaigns.length === 0 && <Text style={styles.emptyText}>No hay campañas activas</Text>}
-                    </View>
-
-                    {/* Sección Campañas Inactivas (Estilo Mockup) */}
-                    <View style={styles.inactiveSection}>
-                        <Text style={styles.sectionTitle}>Campañas Inactivas</Text>
-                        {inactiveCampaigns.map((camp) => (
-                            <View key={`inactive-${camp.id_campaign}`} style={styles.listItem}>
-                                <Text style={styles.listText} numberOfLines={1}>{camp.name}</Text>
-                                <View style={styles.listActions}>
-                                    <TouchableOpacity 
-                                        style={{ marginRight: 15 }}
-                                        onPress={() => router.push({ pathname: '/(app)/(tabs)/dashboard', params: { campaignId: String(camp.id_campaign) } })}
-                                    >
-                                        <Ionicons name="eye-outline" size={24} color={colors.primary} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => router.push({ pathname: '/(app)/create', params: { id: String(camp.id_campaign) } })}>
-                                        <Ionicons name="create-outline" size={24} color={colors.textPrimary} />
-                                    </TouchableOpacity>
-                                </View>
+                    {campaigns.length === 0 ? (
+                        <EmptyState />
+                    ) : (
+                        <>
+                            {/* Sección Campañas Activas (Como Cards del Mockup) */}
+                            <View style={styles.activeSection}>
+                                {activeCampaigns.map(renderActiveCard)}
+                                {activeCampaigns.length === 0 && <Text style={styles.emptyText}>No hay campañas activas</Text>}
                             </View>
-                        ))}
-                        {inactiveCampaigns.length === 0 && <Text style={styles.emptyText}>No hay campañas inactivas</Text>}
-                    </View>
+
+                            {/* Sección Campañas Inactivas (Estilo Mockup) */}
+                            <View style={styles.inactiveSection}>
+                                <Text style={styles.sectionTitle}>Campañas Inactivas</Text>
+                                {inactiveCampaigns.map((camp) => (
+                                    <View key={`inactive-${camp.id_campaign}`} style={styles.listItem}>
+                                        <Text style={styles.listText} numberOfLines={1}>{camp.name}</Text>
+                                        <View style={styles.listActions}>
+                                            <TouchableOpacity 
+                                                style={{ marginRight: 15 }}
+                                                onPress={() => router.push({ pathname: '/(app)/(tabs)/dashboard', params: { campaignId: String(camp.id_campaign) } })}
+                                            >
+                                                <Ionicons name="eye-outline" size={24} color={colors.primary} />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity onPress={() => router.push({ pathname: '/(app)/create', params: { id: String(camp.id_campaign) } })}>
+                                                <Ionicons name="create-outline" size={24} color={colors.textPrimary} />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ))}
+                                {inactiveCampaigns.length === 0 && <Text style={styles.emptyText}>No hay campañas inactivas</Text>}
+                            </View>
+                        </>
+                    )}
 
                 </ScrollView>
             )}
@@ -279,4 +310,13 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         textAlign: 'center',
     },
+});
+
+const emptyStyles = StyleSheet.create({
+    wrapper: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, marginTop: 100 },
+    iconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F3F0FA', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+    title: { fontSize: 20, fontWeight: '700', color: '#000', marginBottom: 10 },
+    subtitle: { textAlign: 'center', color: '#666', marginBottom: 20 },
+    cta: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+    ctaText: { color: '#FFF', fontWeight: '600' },
 });

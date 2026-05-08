@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { colors, typography } from '../theme/colors';
 
@@ -43,8 +43,19 @@ const SolarRankingIcon = ({ color, size = 30 }: { color: string; size?: number }
   </Svg>
 );
 
+const IconamoonProfileFill = ({ color, size = 26 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path
+      fill={color}
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M8 7a4 4 0 1 1 8 0a4 4 0 0 1-8 0m0 6a5 5 0 0 0-5 5a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3a5 5 0 0 0-5-5z"
+    />
+  </Svg>
+);
+
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const visibleRoutes = state.routes.filter(r => r.name !== 'account');
+  const visibleRoutes = state.routes; // show all routes including account
 
   return (
     <View style={styles.container}>
@@ -73,6 +84,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
           let isDashboard = false;
           let isCreate = false;
           let isTop = false;
+          let isAccount = false;
 
           if (routeName === 'dashboard') {
             label = 'Dashboard';
@@ -83,6 +95,9 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
           } else if (routeName === 'ranking') {
             label = 'Top';
             isTop = true;
+          } else if (routeName === 'account') {
+            label = 'Perfil';
+            isAccount = true;
           }
 
           if (isCreate) {
@@ -114,6 +129,10 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                   <DuoDashboardIcon color="#fff" size={36} />
                 ) : isTop ? (
                   <SolarRankingIcon color="#fff" size={36} />
+                ) : isAccount ? (
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255, 255, 255, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                    <IconamoonProfileFill color="#fff" size={22} />
+                  </View>
                 ) : (
                   <Ionicons
                     name="alert-circle-outline"
@@ -187,7 +206,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   plusVertical: {
-    width: 3.5, // 0.5px menos gruesa (de 4 a 3.5)
+    width: 3.5,
     height: 18,
     backgroundColor: colors.primary,
     borderRadius: 2,
@@ -195,7 +214,7 @@ const styles = StyleSheet.create({
   },
   plusHorizontal: {
     width: 18,
-    height: 3.5, // 0.5px menos gruesa (de 4 a 3.5)
+    height: 3.5,
     backgroundColor: colors.primary,
     borderRadius: 2,
     position: 'absolute',
