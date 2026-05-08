@@ -4,6 +4,7 @@ import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { colors, typography } from '../theme/colors';
+import { useTheme } from '../ThemeContext';
 
 // Icono duo-icons:dashboard
 const DuoDashboardIcon = ({ color, size = 26 }: { color: string; size?: number }) => (
@@ -55,11 +56,12 @@ const IconamoonProfileFill = ({ color, size = 26 }: { color: string; size?: numb
 );
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const { colors: themeColors, isDark } = useTheme();
   const visibleRoutes = state.routes; // show all routes including account
 
   return (
     <View style={styles.container}>
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { backgroundColor: themeColors.primary }]}>
         {visibleRoutes.map((route) => {
           const index = state.routes.findIndex(r => r.key === route.key);
           const isFocused = state.index === index;
@@ -108,9 +110,9 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                 style={styles.createTabItem}
                 activeOpacity={0.8}
               >
-                <View style={styles.createIconCircle}>
-                  <View style={styles.plusVertical} />
-                  <View style={styles.plusHorizontal} />
+                <View style={[styles.createIconCircle, { backgroundColor: '#fff' }]}>
+                  <View style={[styles.plusVertical, { backgroundColor: themeColors.primary }]} />
+                  <View style={[styles.plusHorizontal, { backgroundColor: themeColors.primary }]} />
                 </View>
                 <Text style={styles.tabLabel}>{label}</Text>
               </TouchableOpacity>
@@ -163,7 +165,6 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.primary,
     height: 64,
     borderRadius: 32,
     alignItems: 'center',

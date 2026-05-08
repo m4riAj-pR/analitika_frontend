@@ -27,6 +27,7 @@ import {
     spacing,
     typography,
 } from '../../src/theme/colors';
+import { useTheme } from '../../src/ThemeContext';
 
 // ─── Date field group (DD / MM / YYYY) ───────────────────────────────────────
 function DateGroup({
@@ -40,17 +41,18 @@ function DateGroup({
   onMm: (v: string) => void;
   onYyyy: (v: string) => void;
 }) {
+  const { colors: themeColors, isDark } = useTheme();
   const mmRef = useRef<TextInput>(null);
   const yyyyRef = useRef<TextInput>(null);
 
   return (
     <View style={styles.fieldGroup}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={[styles.fieldLabel, { color: themeColors.textSecondary }]}>{label}</Text>
       <View style={styles.dateRow}>
         <TextInput
-          style={[styles.dateInput, { flex: 1 }]}
+          style={[styles.dateInput, { flex: 1, backgroundColor: themeColors.bgCard, color: themeColors.textPrimary }]}
           placeholder="DD"
-          placeholderTextColor={palette.purple3}
+          placeholderTextColor={themeColors.textMuted}
           value={dd}
           onChangeText={(v) => { onDd(v); if (v.length === 2) mmRef.current?.focus(); }}
           keyboardType="numeric"
@@ -59,9 +61,9 @@ function DateGroup({
         />
         <TextInput
           ref={mmRef}
-          style={[styles.dateInput, { flex: 1 }]}
+          style={[styles.dateInput, { flex: 1, backgroundColor: themeColors.bgCard, color: themeColors.textPrimary }]}
           placeholder="MM"
-          placeholderTextColor={palette.purple3}
+          placeholderTextColor={themeColors.textMuted}
           value={mm}
           onChangeText={(v) => { onMm(v); if (v.length === 2) yyyyRef.current?.focus(); }}
           keyboardType="numeric"
@@ -70,9 +72,9 @@ function DateGroup({
         />
         <TextInput
           ref={yyyyRef}
-          style={[styles.dateInput, { flex: 2 }]}
+          style={[styles.dateInput, { flex: 2, backgroundColor: themeColors.bgCard, color: themeColors.textPrimary }]}
           placeholder="YYYY"
-          placeholderTextColor={palette.purple3}
+          placeholderTextColor={themeColors.textMuted}
           value={yyyy}
           onChangeText={onYyyy}
           keyboardType="numeric"
@@ -92,17 +94,18 @@ function MoneyInput({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const { colors: themeColors, isDark } = useTheme();
   return (
     <View style={styles.fieldGroup}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={styles.moneyWrapper}>
-        <Text style={styles.moneyCurrency}>$</Text>
+      <Text style={[styles.fieldLabel, { color: themeColors.textSecondary }]}>{label}</Text>
+      <View style={[styles.moneyWrapper, { backgroundColor: themeColors.bgCard }]}>
+        <Text style={[styles.moneyCurrency, { color: themeColors.textPrimary }]}>$</Text>
         <TextInput
-          style={styles.moneyInput}
+          style={[styles.moneyInput, { color: themeColors.textPrimary }]}
           value={value}
           onChangeText={onChange}
           keyboardType="numeric"
-          placeholderTextColor={palette.purple3}
+          placeholderTextColor={themeColors.textMuted}
         />
       </View>
     </View>
@@ -121,15 +124,16 @@ function EmptyState({
   ctaText?: string;
   onPress: () => void;
 }) {
+  const { colors: themeColors, isDark } = useTheme();
   return (
     <View style={emptyStyles.wrapper}>
-      <View style={emptyStyles.iconCircle}>
-        <Ionicons name="layers-outline" size={52} color={colors.primary} />
+      <View style={[emptyStyles.iconCircle, { backgroundColor: isDark ? '#1E293B' : '#F3F0FA' }]}>
+        <Ionicons name="layers-outline" size={52} color={themeColors.primary} />
       </View>
-      <Text style={emptyStyles.title}>{title}</Text>
-      <Text style={emptyStyles.subtitle}>{subtitle}</Text>
+      <Text style={[emptyStyles.title, { color: themeColors.textPrimary }]}>{title}</Text>
+      <Text style={[emptyStyles.subtitle, { color: themeColors.textSecondary }]}>{subtitle}</Text>
       <TouchableOpacity
-        style={emptyStyles.cta}
+        style={[emptyStyles.cta, { backgroundColor: themeColors.primary }]}
         activeOpacity={0.85}
         onPress={onPress}
       >
@@ -147,6 +151,7 @@ export default function CreateCampaignScreen() {
   const params = useLocalSearchParams();
   const campaignId = params.id ? Number(params.id) : null;
   const { profile } = useProfile();
+  const { colors: themeColors, isDark } = useTheme();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -319,7 +324,7 @@ export default function CreateCampaignScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { paddingTop: insets.top }]}
+      style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Fallback si estamos editando y no se encuentra la campaña */}
@@ -338,15 +343,15 @@ export default function CreateCampaignScreen() {
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          <Ionicons name="arrow-back" size={24} color={themeColors.primary} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle} numberOfLines={2}>
+        <Text style={[styles.headerTitle, { color: themeColors.primary }]} numberOfLines={2}>
           {name.trim() ? name : `Nombre de la\ncampaña`}
         </Text>
 
         <TouchableOpacity
-          style={styles.avatarBtn}
+          style={[styles.avatarBtn, { backgroundColor: themeColors.bgCard }]}
           activeOpacity={0.75}
           onPress={() => router.push('/(app)/(tabs)/account')}
         >
@@ -365,24 +370,24 @@ export default function CreateCampaignScreen() {
       >
         {sessionLoading && (
           <View style={{ marginBottom: spacing.md }}>
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color={themeColors.primary} />
           </View>
         )}
 
         {/* Nombre */}
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: themeColors.bgCard, color: themeColors.textPrimary }]}
           placeholder="Nombre de la campaña"
-          placeholderTextColor={palette.purple3}
+          placeholderTextColor={themeColors.textMuted}
           value={name}
           onChangeText={setName}
         />
 
         {/* Descripción */}
         <TextInput
-          style={[styles.input, styles.textArea]}
+          style={[styles.input, styles.textArea, { backgroundColor: themeColors.bgCard, color: themeColors.textPrimary }]}
           placeholder="Descripcion"
-          placeholderTextColor={palette.purple3}
+          placeholderTextColor={themeColors.textMuted}
           value={description}
           onChangeText={setDescription}
           multiline
@@ -392,14 +397,14 @@ export default function CreateCampaignScreen() {
 
         {/* Estado */}
         <TouchableOpacity
-          style={styles.selectorRow}
+          style={[styles.selectorRow, { backgroundColor: themeColors.bgCard }]}
           activeOpacity={0.7}
           onPress={() => setShowStatusModal(true)}
         >
-          <Text style={[styles.selectorText, !status && styles.placeholder]}>
+          <Text style={[styles.selectorText, { color: themeColors.textPrimary }, !status && { color: themeColors.textMuted }]}>
             {status || 'Estado'}
           </Text>
-          <Ionicons name="chevron-forward" size={18} color={palette.purple3} />
+          <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
         </TouchableOpacity>
 
         {/* Modal selector de estado */}
@@ -409,8 +414,8 @@ export default function CreateCampaignScreen() {
             activeOpacity={1}
             onPress={() => setShowStatusModal(false)}
           >
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Selecciona un Estado</Text>
+            <View style={[styles.modalContent, { backgroundColor: themeColors.bgPage }]}>
+              <Text style={[styles.modalTitle, { color: themeColors.primary }]}>Selecciona un Estado</Text>
               {statusOptions.map((opt) => (
                 <TouchableOpacity
                   key={opt}
@@ -422,7 +427,8 @@ export default function CreateCampaignScreen() {
                 >
                   <Text style={[
                     styles.modalOptionText,
-                    status === opt && { color: colors.primary, fontWeight: typography.bold },
+                    { color: themeColors.textPrimary },
+                    status === opt && { color: themeColors.primary, fontWeight: typography.bold },
                   ]}>
                     {opt.charAt(0).toUpperCase() + opt.slice(1)}
                   </Text>
@@ -433,21 +439,21 @@ export default function CreateCampaignScreen() {
         </Modal>
 
         {/* Datos del Canal */}
-        <View style={styles.divider} />
-        <Text style={styles.sectionTitle}>Datos del Canal (Opcional)</Text>
+        <View style={[styles.divider, { backgroundColor: themeColors.borderDivider }]} />
+        <Text style={[styles.sectionTitle, { color: themeColors.primary }]}>Datos del Canal (Opcional)</Text>
         
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: themeColors.bgCard, color: themeColors.textPrimary }]}
           placeholder="Nombre del Canal (ej. Instagram)"
-          placeholderTextColor={palette.purple3}
+          placeholderTextColor={themeColors.textMuted}
           value={channelName}
           onChangeText={setChannelName}
         />
 
         <TextInput
-          style={[styles.input, styles.textArea]}
+          style={[styles.input, styles.textArea, { backgroundColor: themeColors.bgCard, color: themeColors.textPrimary }]}
           placeholder="Descripción del Canal"
-          placeholderTextColor={palette.purple3}
+          placeholderTextColor={themeColors.textMuted}
           value={channelDescription}
           onChangeText={setChannelDescription}
           multiline
@@ -472,40 +478,40 @@ export default function CreateCampaignScreen() {
 
         {/* Generar Link Trackeable */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Link Trackeable</Text>
-          <View style={[styles.linkBox, { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md }]}>
+          <Text style={[styles.fieldLabel, { color: themeColors.textSecondary }]}>Link Trackeable</Text>
+          <View style={[styles.linkBox, { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, backgroundColor: themeColors.bgCard }]}>
             {trackUrl ? (
               <>
-                <Text style={{ flex: 1, color: colors.textPrimary, fontSize: typography.sizeMd }} numberOfLines={1}>
+                <Text style={{ flex: 1, color: themeColors.textPrimary, fontSize: typography.sizeMd }} numberOfLines={1}>
                   {trackUrl}
                 </Text>
                 <TouchableOpacity 
-                  style={{ padding: spacing.sm, backgroundColor: '#EDE9FE', borderRadius: radii.md }}
+                  style={{ padding: spacing.sm, backgroundColor: isDark ? '#334155' : '#EDE9FE', borderRadius: radii.md }}
                   onPress={async () => {
                     await Clipboard.setStringAsync(trackUrl);
                     Alert.alert('¡Copiado!', 'El link ha sido copiado al portapapeles.');
                   }}
                 >
-                  <Ionicons name="copy-outline" size={20} color={colors.primary} />
+                  <Ionicons name="copy-outline" size={20} color={themeColors.primary} />
                 </TouchableOpacity>
               </>
             ) : (
-              <Text style={{ flex: 1, color: palette.purple3, fontSize: typography.sizeSm, fontStyle: 'italic' }}>
-                {campaignId ? 'No se encontró link trackeable' : 'El link se generará automáticamente al crear la campaña.'}
-              </Text>
+                <Text style={{ flex: 1, color: themeColors.textMuted, fontSize: typography.sizeSm, fontStyle: 'italic' }}>
+                    {campaignId ? 'No se encontró link trackeable' : 'El link se generará automáticamente al crear la campaña.'}
+                  </Text>
             )}
           </View>
         </View>
 
         {/* CTA */}
         <TouchableOpacity
-          style={[styles.createButton, (loading || !profile || !profile.id_company) && { opacity: 0.7 }]}
+          style={[styles.createButton, { backgroundColor: themeColors.primary }, (loading || !profile || !profile.id_company) && { opacity: 0.7 }]}
           activeOpacity={0.85}
           onPress={handleCreate}
           disabled={loading || sessionLoading || !profile || !profile.id_company}
         >
           {loading ? (
-            <ActivityIndicator color={colors.textOnPrimary} />
+            <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.createButtonText}>
               {campaignId ? 'Guardar Cambios' : 'Crear campaña'}

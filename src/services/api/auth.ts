@@ -1,4 +1,4 @@
-import { getUser, removeToken, request, saveToken, saveUser } from "./client";
+import { getUser, getToken, removeToken, request, saveToken, saveUser } from "./client";
 
 export const loginUser = async (emailOrData: any, password?: string) => {
   const email = typeof emailOrData === "object" ? emailOrData.email : emailOrData;
@@ -54,13 +54,18 @@ export const registerUser = async (data: any) => {
 
 export const me = async () => {
   try {
+    const token = await getToken();
+    if (!token) return null;
+
     const res: any = await request("/me");
     if (res) {
       await saveUser(res);
     }
     return res;
-  } catch (err) {
-    console.error("Error fetching fresh /me info:", err);
+  } catch (err: any) {
+    if (err?.status !== 401) {
+      console.error("Error fetching fresh /me info:", err);
+    }
     return await getUser(); // Fallback to cache
   }
 };

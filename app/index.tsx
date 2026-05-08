@@ -3,11 +3,13 @@ import { useEffect, useRef } from "react";
 import { Animated, Image, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, palette, typography } from "../src/theme/colors";
+import { useTheme } from "../src/ThemeContext";
 import { me } from "../src/services/api/auth";
 
 export default function Index() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors: themeColors, isDark } = useTheme();
 
   const step1Opacity = useRef(new Animated.Value(0)).current;
   const step2Opacity = useRef(new Animated.Value(0)).current;
@@ -21,8 +23,15 @@ export default function Index() {
         // y el cliente API limpiará automáticamente el almacenamiento.
         const user = await me();
         
-        // Si tenemos usuario (ya sea del servidor o del caché por fallback en me())
-        const nextRoute = user ? "/(app)/(tabs)/dashboard" : "/(auth)/login";
+        // Redirección basada en el rol
+        let nextRoute = "/(auth)/login";
+        if (user) {
+          if (user.id_role === 1) {
+            nextRoute = "/(admin)/companies";
+          } else {
+            nextRoute = "/(app)/(tabs)/dashboard";
+          }
+        }
 
         Animated.sequence([
           // Animación de Logo
@@ -65,14 +74,14 @@ export default function Index() {
   }, [router, step1Opacity, step2Opacity, screenOpacity]);
 
   return (
-    <Animated.View style={[styles.mainWrapper, { opacity: screenOpacity }]}>
+    <Animated.View style={[styles.mainWrapper, { opacity: screenOpacity, backgroundColor: themeColors.primary }]}>
       {/* Paso 2: Plantilla Actual */}
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
           {
             opacity: step2Opacity,
-            backgroundColor: colors.bgPage,
+            backgroundColor: themeColors.bgPage,
             paddingTop: insets.top,
           },
         ]}
@@ -90,8 +99,8 @@ export default function Index() {
         <View style={styles.bottomRightShape} />
 
         <View style={styles.textContainer}>
-          <Text style={styles.title}>Bienvenid@ a{"\n"}Analitika!</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: themeColors.textPrimary }]}>Bienvenid@ a{"\n"}Analitika!</Text>
+          <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
             Una app para seguimiento y{"\n"}
             consulta de estadisticas para{"\n"}
             campañas digitales
@@ -105,7 +114,7 @@ export default function Index() {
           StyleSheet.absoluteFill,
           {
             opacity: step1Opacity,
-            backgroundColor: colors.primary,
+            backgroundColor: themeColors.primary,
             justifyContent: "center",
             alignItems: "center",
           },

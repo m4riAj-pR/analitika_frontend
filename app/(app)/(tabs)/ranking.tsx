@@ -19,6 +19,7 @@ import {
   spacing,
   typography,
 } from '../../../src/theme/colors';
+import { useTheme } from '../../../src/ThemeContext';
 import { useCampaignsTop } from '../../../src/hooks/useCampaignsTop';
 import type { TopCampaign } from '../../../src/services/api/types';
 
@@ -43,14 +44,15 @@ const podiumStyles = StyleSheet.create({
 
 // ─── Ranking card ─────────────────────────────────────────────────────────────
 function RankingCard({ item, rank }: { item: TopCampaign; rank: number }) {
+  const { colors: themeColors, isDark } = useTheme();
   const isTop = rank === 1;
-  const accent = isTop ? palette.purple3 : 'transparent';
+  const accent = isTop ? themeColors.primary : 'transparent';
 
   const formatNumber = (n?: number | null) =>
     n == null ? '—' : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 
   return (
-    <View style={[styles.card, isTop && styles.cardTop]}>
+    <View style={[styles.card, { backgroundColor: themeColors.primary }, isTop && { borderColor: isDark ? themeColors.textSecondary : palette.purple3 }]}>
       {/* rank badge */}
       <View style={[styles.rankBadge, isTop && styles.rankBadgeTop]}>
         {isTop
@@ -59,7 +61,7 @@ function RankingCard({ item, rank }: { item: TopCampaign; rank: number }) {
         }
       </View>
 
-      <PodiumIcon color={isTop ? palette.purple3 : 'rgba(255,255,255,0.5)'} />
+      <PodiumIcon color={isTop ? (isDark ? '#F1F5F9' : palette.purple3) : 'rgba(255,255,255,0.5)'} />
 
       {/* info */}
       <View style={styles.cardInfo}>
@@ -73,7 +75,7 @@ function RankingCard({ item, rank }: { item: TopCampaign; rank: number }) {
       {/* ROI pill */}
       {item.roi != null && (
         <View style={[styles.roiPill, isTop && styles.roiPillTop]}>
-          <Text style={[styles.roiText, isTop && { color: palette.purple3 }]}>
+          <Text style={[styles.roiText, isTop && { color: isDark ? '#FFF' : palette.purple3 }]}>
             {item.roi >= 0 ? '+' : ''}{item.roi.toFixed(0)}%
           </Text>
         </View>
@@ -85,17 +87,18 @@ function RankingCard({ item, rank }: { item: TopCampaign; rank: number }) {
 // ─── Empty state ──────────────────────────────────────────────────────────────
 function EmptyState() {
   const router = useRouter();
+  const { colors: themeColors, isDark } = useTheme();
   return (
     <View style={emptyStyles.wrapper}>
-      <View style={emptyStyles.iconCircle}>
-        <Ionicons name="podium-outline" size={52} color={colors.primary} />
+      <View style={[emptyStyles.iconCircle, { backgroundColor: isDark ? '#1E293B' : '#EDE9FE' }]}>
+        <Ionicons name="podium-outline" size={52} color={themeColors.primary} />
       </View>
-      <Text style={emptyStyles.title}>Sin ranking aún</Text>
-      <Text style={emptyStyles.subtitle}>
+      <Text style={[emptyStyles.title, { color: themeColors.textPrimary }]}>Sin ranking aún</Text>
+      <Text style={[emptyStyles.subtitle, { color: themeColors.textSecondary }]}>
         Crea tus primeras campañas y comparte sus links para ver cuáles generan más impacto aquí.
       </Text>
       <TouchableOpacity
-        style={emptyStyles.cta}
+        style={[emptyStyles.cta, { backgroundColor: themeColors.primary }]}
         activeOpacity={0.85}
         onPress={() => router.push('/(app)/create')}
       >
@@ -150,6 +153,7 @@ const emptyStyles = StyleSheet.create({
 export default function RankingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: themeColors, isDark } = useTheme();
 
   // Rango: últimos 30 días
   const { start_date, end_date } = useMemo(() => {
@@ -162,15 +166,15 @@ export default function RankingScreen() {
   const { campaigns, loading, error, reload } = useCampaignsTop(start_date, end_date);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
 
       {/* HEADER */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Top Campañas</Text>
-          <Text style={styles.headerSub}>Últimos 30 días</Text>
+          <Text style={[styles.headerTitle, { color: themeColors.primary }]}>Top Campañas</Text>
+          <Text style={[styles.headerSub, { color: themeColors.textSecondary }]}>Últimos 30 días</Text>
         </View>
-        <TouchableOpacity style={styles.avatarBtn} activeOpacity={0.75} onPress={() => router.push('/(app)/account' as any)}>
+        <TouchableOpacity style={[styles.avatarBtn, { backgroundColor: themeColors.bgCard }]} activeOpacity={0.75} onPress={() => router.push('/(app)/account' as any)}>
           <AccountAvatar size={42} />
         </TouchableOpacity>
       </View>
@@ -178,8 +182,8 @@ export default function RankingScreen() {
       {/* CONTENT */}
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Cargando ranking…</Text>
+          <ActivityIndicator size="large" color={themeColors.primary} />
+          <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Cargando ranking…</Text>
         </View>
       ) : error ? (
         /* API error → treat as empty (no campaigns yet) */
@@ -193,12 +197,12 @@ export default function RankingScreen() {
         >
           {/* legend */}
           <View style={styles.legendRow}>
-            <Ionicons name="trophy-outline" size={14} color={palette.purple2} />
-            <Text style={styles.legendText}>
+            <Ionicons name="trophy-outline" size={14} color={themeColors.primary} />
+            <Text style={[styles.legendText, { color: themeColors.textSecondary }]}>
               {campaigns.length} campaña{campaigns.length !== 1 ? 's' : ''} en el ranking
             </Text>
             <TouchableOpacity onPress={reload} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="refresh-outline" size={16} color={palette.purple3} />
+              <Ionicons name="refresh-outline" size={16} color={themeColors.primary} />
             </TouchableOpacity>
           </View>
 

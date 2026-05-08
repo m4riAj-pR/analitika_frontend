@@ -21,10 +21,12 @@ import { usersApi, personsApi } from '../../src/services/api';
 import { removeToken } from '../../src/services/api/client';
 import { colors, palette, radii, shadows, spacing, typography } from '../../src/theme/colors';
 import AccountAvatar from '../../src/components/AccountAvatar';
+import { useTheme } from '../../src/ThemeContext';
 
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { theme, toggleTheme, colors: themeColors, isDark } = useTheme();
 
   const { profile, loading, saving, updateProfile } = useProfile();
 
@@ -174,80 +176,83 @@ export default function AccountScreen() {
 
   return (
     <ScrollView
-      style={[styles.container, { paddingTop: insets.top }]}
+      style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
     >
       {/* HEADER */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mi Perfil</Text>
+        <Text style={[styles.headerTitle, { color: themeColors.primary }]}>Mi Perfil</Text>
         {!isEditing && (
-          <TouchableOpacity style={styles.editBtn} onPress={() => setIsEditing(true)}>
-            <Ionicons name="pencil" size={16} color={colors.primary} />
-            <Text style={styles.editBtnText}>Editar</Text>
+          <TouchableOpacity 
+            style={[styles.editBtn, { backgroundColor: isDark ? '#1E293B' : '#EDE9FE' }]} 
+            onPress={() => setIsEditing(true)}
+          >
+            <Ionicons name="pencil" size={16} color={themeColors.primary} />
+            <Text style={[styles.editBtnText, { color: themeColors.primary }]}>Editar</Text>
           </TouchableOpacity>
         )}
       </View>
 
       {/* CARD PRINCIPAL */}
-      <View style={[styles.profileCard, shadows.card]}>
+      <View style={[styles.profileCard, shadows.card, { backgroundColor: themeColors.bgCard }]}>
         
         {/* AVATAR TOP ABSOLUTE */}
-        <View style={styles.avatarContainer}>
+        <View style={[styles.avatarContainer, { backgroundColor: themeColors.bgPage }]}>
           <AccountAvatar size={100} />
         </View>
 
         {isEditing ? (
           <View style={styles.formContainer}>
-            <Text style={styles.cardTitle}>Editar Información</Text>
+            <Text style={[styles.cardTitle, { color: themeColors.textPrimary }]}>Editar Información</Text>
             
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nombre</Text>
+              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Nombre</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                 value={formData.first_name}
                 onChangeText={(t) => setFormData({ ...formData, first_name: t })}
                 placeholder="Tu nombre"
-                placeholderTextColor={palette.purple3}
+                placeholderTextColor={themeColors.textMuted}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Apellido</Text>
+              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Apellido</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                 value={formData.last_name}
                 onChangeText={(t) => setFormData({ ...formData, last_name: t })}
                 placeholder="Tu apellido"
-                placeholderTextColor={palette.purple3}
+                placeholderTextColor={themeColors.textMuted}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Teléfono</Text>
+              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Teléfono</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                 value={formData.phone}
                 onChangeText={(t) => setFormData({ ...formData, phone: t })}
                 placeholder="Ej. +57 300 000 0000"
                 keyboardType="phone-pad"
-                placeholderTextColor={palette.purple3}
+                placeholderTextColor={themeColors.textMuted}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email <Text style={styles.readOnlyText}>(Solo lectura)</Text></Text>
+              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Email <Text style={styles.readOnlyText}>(Solo lectura)</Text></Text>
               <TextInput
-                style={[styles.input, styles.inputDisabled]}
+                style={[styles.input, styles.inputDisabled, { backgroundColor: isDark ? '#334155' : '#F1F5F9', color: themeColors.textMuted }]}
                 value={profile?.email || ''}
                 editable={false}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Empresa <Text style={styles.readOnlyText}>(Solo lectura)</Text></Text>
+              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Empresa <Text style={styles.readOnlyText}>(Solo lectura)</Text></Text>
               <TextInput
-                style={[styles.input, styles.inputDisabled]}
+                style={[styles.input, styles.inputDisabled, { backgroundColor: isDark ? '#334155' : '#F1F5F9', color: themeColors.textMuted }]}
                 value={profile?.company_name || 'Empresa no encontrada'}
                 editable={false}
               />
@@ -255,14 +260,14 @@ export default function AccountScreen() {
 
             <View style={styles.formActions}>
               <TouchableOpacity
-                style={styles.cancelBtn}
+                style={[styles.cancelBtn, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}
                 onPress={() => setIsEditing(false)}
                 disabled={saving}
               >
-                <Text style={styles.cancelBtnText}>Cancelar</Text>
+                <Text style={[styles.cancelBtnText, { color: themeColors.textSecondary }]}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+                style={[styles.saveBtn, { backgroundColor: themeColors.primary }, saving && { opacity: 0.7 }]}
                 onPress={handleSave}
                 disabled={saving}
               >
@@ -276,42 +281,42 @@ export default function AccountScreen() {
           </View>
         ) : (
           <View style={styles.infoContainer}>
-            <Text style={styles.userName}>{fullName}</Text>
-            <View style={styles.badgeContainer}>
-              <Text style={styles.badgeText}>
+            <Text style={[styles.userName, { color: themeColors.textPrimary }]}>{fullName}</Text>
+            <View style={[styles.badgeContainer, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+              <Text style={[styles.badgeText, { color: themeColors.textSecondary }]}>
                 {profile?.role_name || (profile?.id_role === 1 ? 'Super Admin' : profile?.id_role === 2 ? 'Owner' : profile?.id_role === 3 ? 'Management' : 'Usuario')}
               </Text>
             </View>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
 
             <View style={styles.infoRow}>
-              <View style={styles.infoIconBox}>
-                <Ionicons name="mail" size={20} color={colors.primary} />
+              <View style={[styles.infoIconBox, { backgroundColor: isDark ? '#1E293B' : '#EDE9FE' }]}>
+                <Ionicons name="mail" size={20} color={themeColors.primary} />
               </View>
               <View>
-                <Text style={styles.infoLabel}>Correo Electrónico</Text>
-                <Text style={styles.infoValue}>{profile?.email || 'ejemplo@correo.com'}</Text>
+                <Text style={[styles.infoLabel, { color: themeColors.textSecondary }]}>Correo Electrónico</Text>
+                <Text style={[styles.infoValue, { color: themeColors.textPrimary }]}>{profile?.email || 'ejemplo@correo.com'}</Text>
               </View>
             </View>
 
             <View style={styles.infoRow}>
-              <View style={styles.infoIconBox}>
-                <Ionicons name="call" size={20} color={colors.primary} />
+              <View style={[styles.infoIconBox, { backgroundColor: isDark ? '#1E293B' : '#EDE9FE' }]}>
+                <Ionicons name="call" size={20} color={themeColors.primary} />
               </View>
               <View>
-                <Text style={styles.infoLabel}>Teléfono</Text>
-                <Text style={styles.infoValue}>{profile?.phone || 'No registrado'}</Text>
+                <Text style={[styles.infoLabel, { color: themeColors.textSecondary }]}>Teléfono</Text>
+                <Text style={[styles.infoValue, { color: themeColors.textPrimary }]}>{profile?.phone || 'No registrado'}</Text>
               </View>
             </View>
 
             <View style={styles.infoRow}>
-              <View style={styles.infoIconBox}>
-                <Ionicons name="business" size={20} color={colors.primary} />
+              <View style={[styles.infoIconBox, { backgroundColor: isDark ? '#1E293B' : '#EDE9FE' }]}>
+                <Ionicons name="business" size={20} color={themeColors.primary} />
               </View>
               <View>
-                <Text style={styles.infoLabel}>Empresa</Text>
-                <Text style={styles.infoValue}>
+                <Text style={[styles.infoLabel, { color: themeColors.textSecondary }]}>Empresa</Text>
+                <Text style={[styles.infoValue, { color: themeColors.textPrimary }]}>
                   {profile?.company_name || 'Empresa no encontrada'}
                 </Text>
               </View>
@@ -320,28 +325,44 @@ export default function AccountScreen() {
         )}
       </View>
 
+      {/* SECCIÓN CONFIGURACIÓN (NUEVA - MODO OSCURO) */}
+      <View style={[styles.managementSection, { backgroundColor: themeColors.bgCard }]}>
+        <View style={styles.managementHeader}>
+          <View>
+            <Text style={[styles.sectionTitle, { color: themeColors.primary }]}>Configuración</Text>
+            <Text style={[styles.sectionSubtitle, { color: themeColors.textSecondary }]}>Modo Oscuro</Text>
+          </View>
+          <Switch
+            value={isDark}
+            onValueChange={toggleTheme}
+            trackColor={{ false: '#CBD5E1', true: themeColors.primary }}
+            thumbColor={Platform.OS === 'ios' ? '#fff' : isDark ? '#fff' : '#f4f3f4'}
+          />
+        </View>
+      </View>
+
       {/* SECCIÓN GESTIÓN DE EMPLEADOS (Solo para Owners) */}
       {profile?.id_role === 2 && (
-        <View style={styles.managementSection}>
+        <View style={[styles.managementSection, { backgroundColor: themeColors.bgCard }]}>
           <View style={styles.managementHeader}>
             <View>
-              <Text style={styles.sectionTitle}>Gestión de Empleados</Text>
-              <Text style={styles.sectionSubtitle}>Permitir añadir managements</Text>
+              <Text style={[styles.sectionTitle, { color: themeColors.primary }]}>Gestión de Empleados</Text>
+              <Text style={[styles.sectionSubtitle, { color: themeColors.textSecondary }]}>Permitir añadir managements</Text>
             </View>
             <Switch
               value={isManagementEnabled}
               onValueChange={setIsManagementEnabled}
-              trackColor={{ false: '#CBD5E1', true: colors.primary }}
+              trackColor={{ false: '#CBD5E1', true: themeColors.primary }}
               thumbColor={Platform.OS === 'ios' ? '#fff' : isManagementEnabled ? '#fff' : '#f4f3f4'}
             />
           </View>
 
           {isManagementEnabled && (
-            <View style={styles.managementList}>
+            <View style={[styles.managementList, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
               <View style={styles.listHeader}>
-                <Text style={styles.listTitle}>Managements ({managers.length})</Text>
+                <Text style={[styles.listTitle, { color: themeColors.textPrimary }]}>Managements ({managers.length})</Text>
                 <TouchableOpacity 
-                  style={styles.addBtn}
+                  style={[styles.addBtn, { backgroundColor: themeColors.primary }]}
                   onPress={() => setShowAddModal(true)}
                 >
                   <Ionicons name="add" size={20} color="#fff" />
@@ -350,20 +371,20 @@ export default function AccountScreen() {
               </View>
 
               {loadingManagers ? (
-                <ActivityIndicator color={colors.primary} style={{ marginVertical: 20 }} />
+                <ActivityIndicator color={themeColors.primary} style={{ marginVertical: 20 }} />
               ) : managers.length === 0 ? (
-                <Text style={styles.emptyText}>No hay managers registrados aún.</Text>
+                <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No hay managers registrados aún.</Text>
               ) : (
                 managers.map((m) => (
-                  <View key={m.id_user} style={styles.managerItem}>
-                    <View style={styles.managerAvatar}>
-                      <Text style={styles.managerAvatarText}>
+                  <View key={m.id_user} style={[styles.managerItem, { backgroundColor: isDark ? '#334155' : '#F8FAFC' }]}>
+                    <View style={[styles.managerAvatar, { backgroundColor: isDark ? '#475569' : '#DDD6FE' }]}>
+                      <Text style={[styles.managerAvatarText, { color: themeColors.primary }]}>
                         {(m.name?.[0] || 'M').toUpperCase()}
                       </Text>
                     </View>
                     <View style={styles.managerInfo}>
-                      <Text style={styles.managerName}>{m.name || 'Manager'}</Text>
-                      <Text style={styles.managerEmail}>{m.email}</Text>
+                      <Text style={[styles.managerName, { color: themeColors.textPrimary }]}>{m.name || 'Manager'}</Text>
+                      <Text style={[styles.managerEmail, { color: themeColors.textSecondary }]}>{m.email}</Text>
                     </View>
                     <TouchableOpacity 
                       onPress={() => handleDeleteManager(m.id_user)}
@@ -382,60 +403,64 @@ export default function AccountScreen() {
       {/* MODAL PARA AÑADIR MANAGER */}
       <Modal visible={showAddModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: themeColors.bgCard }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Nuevo Management</Text>
+              <Text style={[styles.modalTitle, { color: themeColors.primary }]}>Nuevo Management</Text>
               <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                <Ionicons name="close" size={24} color={colors.textPrimary} />
+                <Ionicons name="close" size={24} color={themeColors.textPrimary} />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalForm} showsVerticalScrollIndicator={false}>
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalLabel}>Nombre</Text>
+                <Text style={[styles.modalLabel, { color: themeColors.textSecondary }]}>Nombre</Text>
                 <TextInput
-                  style={styles.modalInput}
+                  style={[styles.modalInput, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                   value={newManager.name}
                   onChangeText={(t) => setNewManager({...newManager, name: t})}
                   placeholder="Nombre del empleado"
+                  placeholderTextColor={themeColors.textMuted}
                 />
               </View>
 
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalLabel}>Apellido</Text>
+                <Text style={[styles.modalLabel, { color: themeColors.textSecondary }]}>Apellido</Text>
                 <TextInput
-                  style={styles.modalInput}
+                  style={[styles.modalInput, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                   value={newManager.lastname}
                   onChangeText={(t) => setNewManager({...newManager, lastname: t})}
                   placeholder="Apellido"
+                  placeholderTextColor={themeColors.textMuted}
                 />
               </View>
 
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalLabel}>Email</Text>
+                <Text style={[styles.modalLabel, { color: themeColors.textSecondary }]}>Email</Text>
                 <TextInput
-                  style={styles.modalInput}
+                  style={[styles.modalInput, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                   value={newManager.email}
                   onChangeText={(t) => setNewManager({...newManager, email: t})}
                   placeholder="correo@ejemplo.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  placeholderTextColor={themeColors.textMuted}
                 />
               </View>
 
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalLabel}>Contraseña Inicial</Text>
+                <Text style={[styles.modalLabel, { color: themeColors.textSecondary }]}>Contraseña Inicial</Text>
                 <TextInput
-                  style={styles.modalInput}
+                  style={[styles.modalInput, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                   value={newManager.password}
                   onChangeText={(t) => setNewManager({...newManager, password: t})}
                   placeholder="Mínimo 6 caracteres"
                   secureTextEntry
+                  placeholderTextColor={themeColors.textMuted}
                 />
               </View>
 
               <TouchableOpacity 
-                style={[styles.modalSubmitBtn, loadingManagers && { opacity: 0.7 }]}
+                style={[styles.modalSubmitBtn, { backgroundColor: themeColors.primary }, loadingManagers && { opacity: 0.7 }]}
                 onPress={handleAddManager}
                 disabled={loadingManagers}
               >

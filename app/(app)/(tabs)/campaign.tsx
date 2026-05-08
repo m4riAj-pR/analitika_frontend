@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 
 import { colors, spacing, typography, shadows } from '@/src/theme/colors';
+import { useTheme } from '@/src/ThemeContext';
 import AccountAvatar from '@/src/components/AccountAvatar';
 import { useCampaigns } from '@/src/hooks/useCampaigns';
 import { trackingLinksApi } from '@/src/services/api/tracking';
@@ -22,17 +23,18 @@ import { Campaign } from '@/src/services/api/types';
 // ─── Empty State (Replicated from Dashboard) ──────────────────────────────────
 function EmptyState() {
   const router = useRouter();
+  const { colors: themeColors, isDark } = useTheme();
   return (
     <View style={emptyStyles.wrapper}>
-      <View style={emptyStyles.iconCircle}>
-        <Ionicons name="layers-outline" size={52} color={colors.primary} />
+      <View style={[emptyStyles.iconCircle, { backgroundColor: isDark ? '#1E293B' : '#F3F0FA' }]}>
+        <Ionicons name="layers-outline" size={52} color={themeColors.primary} />
       </View>
-      <Text style={emptyStyles.title}>No hay campañas</Text>
-      <Text style={emptyStyles.subtitle}>
+      <Text style={[emptyStyles.title, { color: themeColors.textPrimary }]}>No hay campañas</Text>
+      <Text style={[emptyStyles.subtitle, { color: themeColors.textSecondary }]}>
         Parece que aún no has creado ninguna campaña activa.
       </Text>
       <TouchableOpacity
-        style={emptyStyles.cta}
+        style={[emptyStyles.cta, { backgroundColor: themeColors.primary }]}
         activeOpacity={0.85}
         onPress={() => router.push('/(app)/create')}
       >
@@ -49,6 +51,7 @@ export default function CampaignScreen() {
     const { campaigns, loading, reload } = useCampaigns();
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const { colors: themeColors, isDark } = useTheme();
     const [linksMap, setLinksMap] = React.useState<Record<number, string>>({});
 
     // Recargar siempre que la pantalla gane foco
@@ -133,19 +136,19 @@ export default function CampaignScreen() {
         if (!campId) return null;
 
         return (
-            <View key={`active-card-${campId}`} style={styles.activeCard}>
+            <View key={`active-card-${campId}`} style={[styles.activeCard, { backgroundColor: isDark ? '#1E293B' : '#E9E4F5' }]}>
                 <TouchableOpacity onPress={() => router.push({ pathname: '/(app)/create', params: { id: String(campId) } })}>
-                    <Text style={styles.activeCardTitle}>{camp.name}</Text>
+                    <Text style={[styles.activeCardTitle, { color: themeColors.textPrimary }]}>{camp.name}</Text>
                 </TouchableOpacity>
                 
                 {/* Botón Copiar Estilo Mockup (Cápsula Blanca) */}
-                <TouchableOpacity style={styles.copyCapsule} onPress={() => copyLink(campId)}>
-                    <Ionicons name="copy" size={20} color={colors.primary} />
-                    <Text style={styles.copyCapsuleText}>Copiar link trackeable</Text>
+                <TouchableOpacity style={[styles.copyCapsule, { backgroundColor: isDark ? '#334155' : '#FFF' }]} onPress={() => copyLink(campId)}>
+                    <Ionicons name="copy" size={20} color={themeColors.primary} />
+                    <Text style={[styles.copyCapsuleText, { color: themeColors.primary }]}>Copiar link trackeable</Text>
                 </TouchableOpacity>
 
                 {/* Botón Dashboard Estilo Mockup (Sólido Morado) */}
-                <TouchableOpacity style={styles.dashboardButton} onPress={() => router.push('/(app)/(tabs)/dashboard')}>
+                <TouchableOpacity style={[styles.dashboardButton, { backgroundColor: themeColors.primary }]} onPress={() => router.push('/(app)/(tabs)/dashboard')}>
                     <Text style={styles.dashboardButtonText}>Ver Dashboard</Text>
                 </TouchableOpacity>
             </View>
@@ -153,10 +156,10 @@ export default function CampaignScreen() {
     };
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
             {/* ── HEADER ── */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Campañas</Text>
+                <Text style={[styles.headerTitle, { color: themeColors.primary }]}>Campañas</Text>
                 <TouchableOpacity onPress={() => router.push('/account')}>
                     <AccountAvatar size={42} />
                 </TouchableOpacity>
@@ -164,7 +167,7 @@ export default function CampaignScreen() {
 
             {loading ? (
                 <View style={{ flex: 1, justifyContent: 'center' }}>
-                    <ActivityIndicator size="large" color={colors.primary} />
+                    <ActivityIndicator size="large" color={themeColors.primary} />
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}>
@@ -176,29 +179,29 @@ export default function CampaignScreen() {
                             {/* Sección Campañas Activas (Como Cards del Mockup) */}
                             <View style={styles.activeSection}>
                                 {activeCampaigns.map(renderActiveCard)}
-                                {activeCampaigns.length === 0 && <Text style={styles.emptyText}>No hay campañas activas</Text>}
+                                {activeCampaigns.length === 0 && <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>No hay campañas activas</Text>}
                             </View>
 
                             {/* Sección Campañas Inactivas (Estilo Mockup) */}
-                            <View style={styles.inactiveSection}>
-                                <Text style={styles.sectionTitle}>Campañas Inactivas</Text>
+                            <View style={[styles.inactiveSection, { backgroundColor: isDark ? '#1E293B' : '#E9E4F5' }]}>
+                                <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Campañas Inactivas</Text>
                                 {inactiveCampaigns.map((camp) => (
-                                    <View key={`inactive-${camp.id_campaign}`} style={styles.listItem}>
-                                        <Text style={styles.listText} numberOfLines={1}>{camp.name}</Text>
+                                    <View key={`inactive-${camp.id_campaign}`} style={[styles.listItem, { backgroundColor: isDark ? '#334155' : '#F3F0FA' }]}>
+                                        <Text style={[styles.listText, { color: themeColors.textPrimary }]} numberOfLines={1}>{camp.name}</Text>
                                         <View style={styles.listActions}>
                                             <TouchableOpacity 
                                                 style={{ marginRight: 15 }}
                                                 onPress={() => router.push({ pathname: '/(app)/(tabs)/dashboard', params: { campaignId: String(camp.id_campaign) } })}
                                             >
-                                                <Ionicons name="eye-outline" size={24} color={colors.primary} />
+                                                <Ionicons name="eye-outline" size={24} color={themeColors.primary} />
                                             </TouchableOpacity>
                                             <TouchableOpacity onPress={() => router.push({ pathname: '/(app)/create', params: { id: String(camp.id_campaign) } })}>
-                                                <Ionicons name="create-outline" size={24} color={colors.textPrimary} />
+                                                <Ionicons name="create-outline" size={24} color={themeColors.textSecondary} />
                                             </TouchableOpacity>
                                         </View>
                                     </View>
                                 ))}
-                                {inactiveCampaigns.length === 0 && <Text style={styles.emptyText}>No hay campañas inactivas</Text>}
+                                {inactiveCampaigns.length === 0 && <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>No hay campañas inactivas</Text>}
                             </View>
                         </>
                     )}

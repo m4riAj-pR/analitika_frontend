@@ -25,6 +25,7 @@ import {
     spacing,
     typography
 } from "../../src/theme/colors";
+import { useTheme } from "../../src/ThemeContext";
 
 const { height } = Dimensions.get('window');
 
@@ -32,6 +33,7 @@ export default function Register() {
     console.log("AUTH API DIRECT:", authApi);
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const { colors: themeColors, isDark } = useTheme();
     const [nombres, setNombres] = useState("");
     const [apellidos, setApellidos] = useState("");
     const [empresa, setEmpresa] = useState("");
@@ -117,21 +119,21 @@ export default function Register() {
 
     return (
         <KeyboardAvoidingView
-            style={styles.container}
+            style={[styles.container, { backgroundColor: themeColors.bgPage }]}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
             {/* ── HEADER – blob + logo ── */}
-            <View style={[styles.header, { paddingTop: insets.top }]}>
+            <View style={[styles.header, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
                 {/* Blob superior-izquierdo */}
                 <View style={styles.blobTopLeft} />
 
                 {/* Botón volver */}
                 <TouchableOpacity
-                    style={[styles.backButton, { top: insets.top + 10 }]}
+                    style={[styles.backButton, { top: insets.top + 10, backgroundColor: isDark ? 'rgba(30, 41, 59, 0.5)' : 'rgba(255,255,255,0.5)' }]}
                     onPress={() => router.back()}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                    <Ionicons name="arrow-back" size={24} color={colors.primary} />
+                    <Ionicons name="arrow-back" size={24} color={themeColors.primary} />
                 </TouchableOpacity>
 
                 {/* Logo */}
@@ -145,7 +147,7 @@ export default function Register() {
             </View>
 
             {/* ── BOTTOM SHEET – formulario ── */}
-            <View style={styles.sheet}>
+            <View style={[styles.sheet, { backgroundColor: themeColors.bgAccent }]}>
                 <ScrollView
                     contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
                     showsVerticalScrollIndicator={false}
@@ -153,17 +155,17 @@ export default function Register() {
                     bounces={false}
                 >
                     <View style={styles.sheetHeader}>
-                        <Text style={styles.title}>Crea tu Cuenta</Text>
+                        <Text style={[styles.title, { color: themeColors.textPrimary }]}>Crea tu Cuenta</Text>
                     </View>
 
                     <View style={styles.form}>
                         {/* Nombres */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Nombres</Text>
+                            <Text style={[styles.label, { color: themeColors.textSecondary }]}>Nombres</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                                 placeholder="Tus nombres"
-                                placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                                placeholderTextColor={themeColors.textMuted}
                                 value={nombres}
                                 onChangeText={setNombres}
                                 autoCapitalize="words"
@@ -172,11 +174,11 @@ export default function Register() {
 
                         {/* Apellidos */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Apellidos</Text>
+                            <Text style={[styles.label, { color: themeColors.textSecondary }]}>Apellidos</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                                 placeholder="Tus apellidos"
-                                placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                                placeholderTextColor={themeColors.textMuted}
                                 value={apellidos}
                                 onChangeText={setApellidos}
                                 autoCapitalize="words"
@@ -185,11 +187,11 @@ export default function Register() {
 
                         {/* Teléfono */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Teléfono</Text>
+                            <Text style={[styles.label, { color: themeColors.textSecondary }]}>Teléfono</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                                 placeholder="Tu número de teléfono"
-                                placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                                placeholderTextColor={themeColors.textMuted}
                                 value={phone}
                                 onChangeText={setPhone}
                                 keyboardType="phone-pad"
@@ -198,11 +200,11 @@ export default function Register() {
 
                         {/* Empresa */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Empresa</Text>
+                            <Text style={[styles.label, { color: themeColors.textSecondary }]}>Empresa</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                                 placeholder="Nombre de tu empresa"
-                                placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                                placeholderTextColor={themeColors.textMuted}
                                 value={empresa}
                                 onChangeText={setEmpresa}
                                 autoCapitalize="words"
@@ -211,11 +213,11 @@ export default function Register() {
 
                         {/* Correo */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Correo Electrónico</Text>
+                            <Text style={[styles.label, { color: themeColors.textSecondary }]}>Correo Electrónico</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                                 placeholder="ejemplo@correo.com"
-                                placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                                placeholderTextColor={themeColors.textMuted}
                                 value={email}
                                 onChangeText={setEmail}
                                 keyboardType="email-address"
@@ -226,11 +228,11 @@ export default function Register() {
 
                         {/* Contraseña */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Contraseña</Text>
+                            <Text style={[styles.label, { color: themeColors.textSecondary }]}>Contraseña</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                                 placeholder="Mínimo 8 caracteres"
-                                placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                                placeholderTextColor={themeColors.textMuted}
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry
@@ -243,15 +245,15 @@ export default function Register() {
                             activeOpacity={0.7}
                             onPress={() => setAcceptedTerms(!acceptedTerms)}
                         >
-                            <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
+                            <View style={[styles.checkbox, { backgroundColor: themeColors.bgInput, borderColor: isDark ? '#334155' : '#CBD5E1' }, acceptedTerms && { backgroundColor: themeColors.primary, borderColor: themeColors.primary }]}>
                                 {acceptedTerms && (
                                     <Ionicons name="checkmark" size={14} color="#fff" />
                                 )}
                             </View>
-                            <Text style={styles.checkboxLabel}>
+                            <Text style={[styles.checkboxLabel, { color: themeColors.textSecondary }]}>
                                 Acepto los{" "}
                                 <Text
-                                    style={styles.checkboxLink}
+                                    style={[styles.checkboxLink, { color: themeColors.primary }]}
                                     onPress={() => {
                                         setShowTermsModal(true);
                                     }}
@@ -264,13 +266,13 @@ export default function Register() {
 
                         {/* Botón Registrarse */}
                         <TouchableOpacity
-                            style={[styles.registerButton, loading && { opacity: 0.7 }]}
+                            style={[styles.registerButton, { backgroundColor: themeColors.primary }, loading && { opacity: 0.7 }]}
                             activeOpacity={0.85}
                             onPress={handleRegister}
                             disabled={loading}
                         >
                             {loading ? (
-                                <ActivityIndicator color={colors.textOnPrimary} />
+                                <ActivityIndicator color="#fff" />
                             ) : (
                                 <Text style={styles.registerButtonText}>Registrarse</Text>
                             )}
@@ -278,9 +280,9 @@ export default function Register() {
 
                         {/* Footer */}
                         <View style={styles.footer}>
-                            <Text style={styles.footerText}>¿Ya tienes una cuenta? </Text>
+                            <Text style={[styles.footerText, { color: themeColors.textSecondary }]}>¿Ya tienes una cuenta? </Text>
                             <TouchableOpacity onPress={() => router.replace("/(auth)/login")} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                                <Text style={styles.footerLink}>Inicia Sesión</Text>
+                                <Text style={[styles.footerLink, { color: themeColors.primary }]}>Inicia Sesión</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -295,12 +297,12 @@ export default function Register() {
                 onRequestClose={() => setShowTermsModal(false)}
             >
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                    <View style={[styles.modalContent, { backgroundColor: themeColors.bgCard }]}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Términos y Condiciones</Text>
+                            <Text style={[styles.modalTitle, { color: themeColors.primary }]}>Términos y Condiciones</Text>
                         </View>
                         <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-                            <Text style={styles.modalText}>
+                            <Text style={[styles.modalText, { color: themeColors.textSecondary }]}>
                                 ¡Bienvenido a Analitika! Al utilizar nuestra aplicación, aceptas las siguientes condiciones:
                                 {"\n\n"}
                                 1. Uso de la plataforma{"\n"}
@@ -320,7 +322,7 @@ export default function Register() {
                             </Text>
                         </ScrollView>
                         <TouchableOpacity
-                            style={styles.modalAcceptButton}
+                            style={[styles.modalAcceptButton, { backgroundColor: themeColors.primary }]}
                             onPress={() => {
                                 setAcceptedTerms(true);
                                 setShowTermsModal(false);
@@ -332,7 +334,7 @@ export default function Register() {
                             style={styles.modalCloseButton}
                             onPress={() => setShowTermsModal(false)}
                         >
-                            <Text style={styles.modalCloseText}>Cerrar sin aceptar</Text>
+                            <Text style={[styles.modalCloseText, { color: themeColors.textSecondary }]}>Cerrar sin aceptar</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -363,6 +365,7 @@ const styles = StyleSheet.create({
         height: 150,
         borderRadius: 75,
         backgroundColor: colors.bgBlob,
+        opacity: 0.4,
     },
     logoWrapper: {
         alignItems: "center",

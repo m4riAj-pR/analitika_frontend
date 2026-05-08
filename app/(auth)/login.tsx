@@ -22,10 +22,12 @@ import {
     spacing,
     typography
 } from "../../src/theme/colors";
+import { useTheme } from "../../src/ThemeContext";
 
 export default function Login() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const { colors: themeColors, isDark } = useTheme();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -73,11 +75,11 @@ export default function Login() {
     return (
 
         <KeyboardAvoidingView
-            style={styles.container}
+            style={[styles.container, { backgroundColor: themeColors.bgPage }]}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
             {/* ── HEADER – fondo blanco con blobs y logo ── */}
-            <View style={[styles.header, { paddingTop: insets.top }]}>
+            <View style={[styles.header, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
                 {/* Blob superior-izquierdo (grande, cortado) */}
                 <View style={styles.blobTopLeft} />
 
@@ -97,15 +99,15 @@ export default function Login() {
             </View>
 
             {/* ── BOTTOM SHEET – formulario ── */}
-            <View style={styles.sheet}>
-                <Text style={styles.title}>Inicio de Sesion</Text>
+            <View style={[styles.sheet, { backgroundColor: themeColors.bgAccent }]}>
+                <Text style={[styles.title, { color: themeColors.primary }]}>Inicio de Sesion</Text>
 
                 {/* Email */}
-                <Text style={styles.label}>Correo Electrónico</Text>
+                <Text style={[styles.label, { color: themeColors.primary }]}>Correo Electrónico</Text>
                 <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary }]}
                     placeholder="Correo Electrónico"
-                    placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                    placeholderTextColor={themeColors.textMuted}
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -114,11 +116,11 @@ export default function Login() {
                 />
 
                 {/* Contraseña */}
-                <Text style={styles.label}>Contraseña</Text>
+                <Text style={[styles.label, { color: themeColors.primary }]}>Contraseña</Text>
                 <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary }]}
                     placeholder="Contraseña"
-                    placeholderTextColor="rgba(156, 163, 175, 0.8)"
+                    placeholderTextColor={themeColors.textMuted}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -126,13 +128,13 @@ export default function Login() {
 
                 {/* Botón principal */}
                 <TouchableOpacity
-                    style={[styles.loginButton, loading && { opacity: 0.7 }]}
+                    style={[styles.loginButton, { backgroundColor: themeColors.primary }, loading && { opacity: 0.7 }]}
                     activeOpacity={0.85}
                     onPress={handleLogin}
                     disabled={loading}
                 >
                     {loading ? (
-                        <ActivityIndicator color={colors.textOnPrimary} />
+                        <ActivityIndicator color={themeColors.textOnPrimary} />
                     ) : (
                         <Text style={styles.loginButtonText}>Iniciar Sesion</Text>
                     )}
@@ -156,9 +158,9 @@ export default function Login() {
 
                 {/* Footer */}
                 <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-                    <Text style={styles.footerText}>
+                    <Text style={[styles.footerText, { color: themeColors.textBody }]}>
                         ¿No tienes cuenta ?{" "}
-                        <Text style={styles.footerLink}>Registrate Gratis</Text>
+                        <Text style={[styles.footerLink, { color: themeColors.primary }]}>Registrate Gratis</Text>
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -191,6 +193,7 @@ const styles = StyleSheet.create({
         height: 160,
         borderRadius: 80,
         backgroundColor: colors.bgBlob,
+        opacity: 0.4,
     },
     blobTopRight: {
         position: "absolute",
@@ -200,6 +203,7 @@ const styles = StyleSheet.create({
         height: 120,
         borderRadius: 60,
         backgroundColor: colors.bgBlob,
+        opacity: 0.4,
     },
     blobMidLeft: {
         position: "absolute",
@@ -209,7 +213,7 @@ const styles = StyleSheet.create({
         height: 70,
         borderRadius: 35,
         backgroundColor: colors.bgBlob,
-        opacity: 0.7,
+        opacity: 0.3,
     },
 
     /* Logo */

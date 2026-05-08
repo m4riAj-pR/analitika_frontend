@@ -7,7 +7,7 @@ import type { ApiError } from './types';
 let memoryToken: string | null = null;
 let memoryUser: any = null;
 
-async function getToken() {
+export async function getToken() {
   try {
     const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
     return storedToken || memoryToken;

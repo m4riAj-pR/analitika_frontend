@@ -59,6 +59,45 @@ export const colors = {
   link: palette.purple4,
 } as const;
 
+export const darkColors: typeof colors = {
+  // --- Marca ---
+  primary: palette.purple2,   // Más brillante en fondo oscuro
+  primaryHover: palette.purple3,
+  secondary: palette.purple3,
+
+  // --- Texto ---
+  textPrimary: '#F1F5F9',  // Blanco grisáceo para títulos
+  textSecondary: palette.purple3, // Lila para subtítulos
+  textMuted: '#64748B',  // Gris apagado
+  textBody: '#94A3B8',    // Gris suave para lectura
+  textOnPrimary: palette.white,
+
+  // --- Fondos ---
+  bgPage: '#0F172A',      // Azul muy oscuro (Casi negro)
+  bgCard: '#1E293B',      // Azul pizarra oscuro para cards
+  bgInput: '#1E293B',     // Inputs oscuros
+  bgAccent: '#1E1B4B',    // Acento índigo profundo
+  bgBlob: '#4C1D95',      // Violeta oscuro para blobs
+
+  // --- Bordes ---
+  borderInput: '#334155', 
+  borderFocus: palette.purple2,
+  borderDivider: '#334155',
+
+  // --- Estados ---
+  success: '#34D399',
+  error: '#F87171',
+  warning: '#FBBF24',
+  info: palette.purple3,
+
+  // --- Checkbox / Toggle ---
+  checkboxActive: palette.purple2,
+  checkboxInactive: '#475569',
+
+  // --- Links ---
+  link: palette.purple2,
+} as const;
+
 export const typography = {
   // Tamaños
   sizeXs: 11,

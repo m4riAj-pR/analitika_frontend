@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, shadows } from '../../src/theme/colors';
+import { useTheme } from '../../src/ThemeContext';
 import api from '../../src/services/api/client';
 import AccountAvatar from '../../src/components/AccountAvatar';
 import { useRouter } from 'expo-router';
@@ -25,6 +26,7 @@ interface CompanyAdmin {
 export default function AdminCompanies() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors: themeColors, isDark } = useTheme();
   const [companies, setCompanies] = useState<CompanyAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -52,31 +54,31 @@ export default function AdminCompanies() {
     const isExpanded = expandedId === item.id_company;
 
     return (
-      <View style={[styles.cardContainer, isExpanded && styles.cardExpandedBorder]}>
+      <View style={[styles.cardContainer, { backgroundColor: isDark ? '#1E293B' : '#F8F9FA', borderColor: isDark ? '#334155' : '#F1F3F5' }, isExpanded && { borderColor: themeColors.primary, backgroundColor: themeColors.bgCard }]}>
         <TouchableOpacity 
-          style={[styles.companyHeader, isExpanded && styles.companyHeaderActive]} 
+          style={[styles.companyHeader, isExpanded && { borderBottomColor: isDark ? '#334155' : '#F1F3F5' }]} 
           activeOpacity={0.8}
           onPress={() => toggleExpand(item.id_company)}
         >
-          <Text style={[styles.companyName, isExpanded && styles.companyNameActive]}>
+          <Text style={[styles.companyName, { color: themeColors.textPrimary }, isExpanded && { color: themeColors.primary, fontWeight: '700' }]}>
             {item.nombre_empresa}
           </Text>
           <Ionicons 
             name={isExpanded ? "chevron-up" : "chevron-down"} 
             size={24} 
-            color={isExpanded ? colors.primary : "#666"} 
+            color={isExpanded ? themeColors.primary : themeColors.textMuted} 
           />
         </TouchableOpacity>
         
         {isExpanded && (
-          <View style={styles.statsContainer}>
+          <View style={[styles.statsContainer, { backgroundColor: isDark ? '#0F172A' : '#FAF9FE' }]}>
             <View style={styles.statsInfo}>
-              <Text style={styles.statsText}>{item.owners} Owners</Text>
-              <Text style={styles.statsText}>{item.managements} managments</Text>
+              <Text style={[styles.statsText, { color: themeColors.textSecondary }]}>{item.owners} Owners</Text>
+              <Text style={[styles.statsText, { color: themeColors.textSecondary }]}>{item.managements} managments</Text>
             </View>
             
             <TouchableOpacity 
-              style={styles.manageButton}
+              style={[styles.manageButton, { backgroundColor: themeColors.primary }]}
               onPress={() => router.push({ pathname: '/(admin)/roles', params: { companyId: item.id_company, companyName: item.nombre_empresa } })}
             >
               <Text style={styles.manageButtonText}>Gestionar Usuarios</Text>
@@ -89,7 +91,7 @@ export default function AdminCompanies() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
       <View style={styles.header}>
         <View style={styles.logoWrapper}>
           <Image 
@@ -106,10 +108,10 @@ export default function AdminCompanies() {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.title}>Empresas</Text>
+      <Text style={[styles.title, { color: themeColors.primary }]}>Empresas</Text>
 
       {loading ? (
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" color={themeColors.primary} style={{ marginTop: 50 }} />
       ) : (
         <FlatList
           data={companies}

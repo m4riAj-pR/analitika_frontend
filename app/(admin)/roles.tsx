@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AccountAvatar from '../../src/components/AccountAvatar';
 import api from '../../src/services/api/client';
 import { colors, radii, shadows, typography } from '../../src/theme/colors';
+import { useTheme } from '../../src/ThemeContext';
 
 interface UserRoleGroup {
   id_user: number;
@@ -28,6 +29,7 @@ export default function AdminRoles() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { companyId, companyName } = useLocalSearchParams();
+  const { colors: themeColors, isDark } = useTheme();
 
   console.log("ROLES PARAMS:", { companyId, companyName });
 
@@ -84,29 +86,29 @@ export default function AdminRoles() {
   };
 
   const UserItem = ({ user }: { user: UserRoleGroup }) => (
-    <View style={styles.userCard}>
+    <View style={[styles.userCard, { backgroundColor: themeColors.bgCard, borderColor: isDark ? '#334155' : '#F1F3F5' }]}>
       <View style={styles.userInfo}>
-        <View style={styles.avatarPlaceholder}>
-          <Text style={styles.avatarText}>{user.email.charAt(0).toUpperCase()}</Text>
+        <View style={[styles.avatarPlaceholder, { backgroundColor: isDark ? '#334155' : '#F3F0FA' }]}>
+          <Text style={[styles.avatarText, { color: themeColors.primary }]}>{user.email.charAt(0).toUpperCase()}</Text>
         </View>
         <View style={styles.userTextContainer}>
-          <Text style={styles.userEmail} numberOfLines={1}>{user.email}</Text>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>{user.role_name}</Text>
+          <Text style={[styles.userEmail, { color: themeColors.textPrimary }]} numberOfLines={1}>{user.email}</Text>
+          <View style={[styles.roleBadge, { backgroundColor: isDark ? '#0F172A' : '#F8F9FA' }]}>
+            <Text style={[styles.roleBadgeText, { color: themeColors.textMuted }]}>{user.role_name}</Text>
           </View>
         </View>
       </View>
       <TouchableOpacity
-        style={styles.editButton}
+        style={[styles.editButton, { backgroundColor: isDark ? '#334155' : '#F3F0FA' }]}
         onPress={() => setSelectedUser(user)}
       >
-        <Feather name="edit-2" size={18} color={colors.primary} />
+        <Feather name="edit-2" size={18} color={themeColors.primary} />
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
       <View style={styles.header}>
         <View style={styles.logoWrapper}>
           <Image
@@ -124,44 +126,44 @@ export default function AdminRoles() {
       </View>
 
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>Roles</Text>
+        <Text style={[styles.title, { color: themeColors.primary }]}>Roles</Text>
         {companyName && (
-          <View style={styles.filterBadge}>
-            <Ionicons name="business" size={12} color={colors.primary} />
-            <Text style={styles.filterText} numberOfLines={1}>{companyName}</Text>
+          <View style={[styles.filterBadge, { backgroundColor: themeColors.bgCard, borderColor: isDark ? '#334155' : '#F1F3F5' }]}>
+            <Ionicons name="business" size={12} color={themeColors.primary} />
+            <Text style={[styles.filterText, { color: themeColors.primary }]} numberOfLines={1}>{companyName}</Text>
             <TouchableOpacity onPress={() => router.setParams({ companyId: '', companyName: '' })}>
-              <Ionicons name="close-circle" size={16} color="#666" />
+              <Ionicons name="close-circle" size={16} color={themeColors.textMuted} />
             </TouchableOpacity>
           </View>
         )}
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" color={themeColors.primary} style={{ marginTop: 50 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <View style={styles.sectionDot} />
-              <Text style={styles.sectionTitle}>Owners ({data.owners.length})</Text>
+              <View style={[styles.sectionDot, { backgroundColor: themeColors.primary }]} />
+              <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Owners ({data.owners.length})</Text>
             </View>
             {data.owners.length > 0 ? (
               data.owners.map(user => <UserItem key={user.id_user} user={user} />)
             ) : (
-              <Text style={styles.emptyText}>No hay usuarios con este rol</Text>
+              <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>No hay usuarios con este rol</Text>
             )}
           </View>
 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionDot, { backgroundColor: colors.secondary }]} />
-              <Text style={styles.sectionTitle}>Management ({data.managements.length})</Text>
+              <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Management ({data.managements.length})</Text>
             </View>
             {data.managements.length > 0 ? (
               data.managements.map(user => <UserItem key={user.id_user} user={user} />)
             ) : (
-              <Text style={styles.emptyText}>No hay usuarios con este rol</Text>
+              <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>No hay usuarios con este rol</Text>
             )}
           </View>
 
@@ -176,19 +178,19 @@ export default function AdminRoles() {
         onRequestClose={() => setSelectedUser(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Gestionar Acceso</Text>
-            <Text style={styles.modalSubtitle}>Selecciona el nuevo nivel de permisos para {selectedUser?.email}</Text>
+          <View style={[styles.modalContent, { backgroundColor: themeColors.bgCard }]}>
+            <Text style={[styles.modalTitle, { color: themeColors.primary }]}>Gestionar Acceso</Text>
+            <Text style={[styles.modalSubtitle, { color: themeColors.textSecondary }]}>Selecciona el nuevo nivel de permisos para {selectedUser?.email}</Text>
 
             {updating ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={styles.updatingText}>Actualizando rol...</Text>
+                <ActivityIndicator size="large" color={themeColors.primary} />
+                <Text style={[styles.updatingText, { color: themeColors.primary }]}>Actualizando rol...</Text>
               </View>
             ) : (
               <View style={styles.optionsContainer}>
                 <TouchableOpacity
-                  style={[styles.roleOption, selectedUser?.id_role === 2 && styles.activeOption]}
+                  style={[styles.roleOption, { backgroundColor: isDark ? '#1E293B' : '#F8F9FA' }, selectedUser?.id_role === 2 && { backgroundColor: themeColors.primary, borderColor: themeColors.primary }]}
                   onPress={() => handleUpdateRole(2)}
                   activeOpacity={0.7}
                 >
@@ -196,17 +198,17 @@ export default function AdminRoles() {
                     <MaterialCommunityIcons
                       name="shield-account"
                       size={24}
-                      color={selectedUser?.id_role === 2 ? '#FFF' : colors.primary}
+                      color={selectedUser?.id_role === 2 ? '#FFF' : themeColors.primary}
                     />
-                    <Text style={[styles.roleOptionText, selectedUser?.id_role === 2 && styles.activeOptionText]}>Owner</Text>
+                    <Text style={[styles.roleOptionText, { color: themeColors.primary }, selectedUser?.id_role === 2 && styles.activeOptionText]}>Owner</Text>
                   </View>
-                  <Text style={[styles.optionDesc, selectedUser?.id_role === 2 && styles.activeOptionText]}>
+                  <Text style={[styles.optionDesc, { color: themeColors.textSecondary }, selectedUser?.id_role === 2 && styles.activeOptionText]}>
                     Acceso total a la configuración y gestión de la empresa.
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.roleOption, selectedUser?.id_role === 3 && styles.activeOption]}
+                  style={[styles.roleOption, { backgroundColor: isDark ? '#1E293B' : '#F8F9FA' }, selectedUser?.id_role === 3 && { backgroundColor: themeColors.primary, borderColor: themeColors.primary }]}
                   onPress={() => handleUpdateRole(3)}
                   activeOpacity={0.7}
                 >
@@ -214,11 +216,11 @@ export default function AdminRoles() {
                     <MaterialCommunityIcons
                       name="account-cog"
                       size={24}
-                      color={selectedUser?.id_role === 3 ? '#FFF' : colors.primary}
+                      color={selectedUser?.id_role === 3 ? '#FFF' : themeColors.primary}
                     />
-                    <Text style={[styles.roleOptionText, selectedUser?.id_role === 3 && styles.activeOptionText]}>Management</Text>
+                    <Text style={[styles.roleOptionText, { color: themeColors.primary }, selectedUser?.id_role === 3 && styles.activeOptionText]}>Management</Text>
                   </View>
-                  <Text style={[styles.optionDesc, selectedUser?.id_role === 3 && styles.activeOptionText]}>
+                  <Text style={[styles.optionDesc, { color: themeColors.textSecondary }, selectedUser?.id_role === 3 && styles.activeOptionText]}>
                     Gestión operativa y visualización de analíticas.
                   </Text>
                 </TouchableOpacity>
@@ -228,7 +230,7 @@ export default function AdminRoles() {
                     style={styles.cancelButton}
                     onPress={() => setSelectedUser(null)}
                   >
-                    <Text style={styles.cancelButtonText}>Cerrar</Text>
+                    <Text style={[styles.cancelButtonText, { color: themeColors.textSecondary }]}>Cerrar</Text>
                   </TouchableOpacity>
                 </View>
               </View>

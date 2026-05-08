@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, shadows } from '../../src/theme/colors';
+import { useTheme } from '../../src/ThemeContext';
 import { notificationsApi } from '../../src/services/api/notifications';
 
 interface Notification {
@@ -27,6 +28,7 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const { colors: themeColors, isDark } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -66,40 +68,40 @@ export default function NotificationsScreen() {
 
   const renderItem = ({ item }: { item: Notification }) => (
     <TouchableOpacity 
-      style={[styles.notificationCard, !item.is_read && styles.unreadCard]}
+      style={[styles.notificationCard, { backgroundColor: themeColors.bgCard }, !item.is_read && { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderLeftWidth: 4, borderLeftColor: themeColors.primary }]}
       onPress={() => markAsRead(item.id_notification)}
       activeOpacity={0.7}
     >
-      <View style={styles.iconContainer}>
+      <View style={[styles.iconContainer, { backgroundColor: isDark ? '#0F172A' : '#F3F0FA' }]}>
         <Ionicons 
           name={item.type === 'warning' ? 'alert-circle' : 'notifications'} 
           size={24} 
-          color={item.type === 'warning' ? '#EF4444' : colors.primary} 
+          color={item.type === 'warning' ? '#EF4444' : themeColors.primary} 
         />
       </View>
       <View style={styles.contentContainer}>
-        <Text style={[styles.title, !item.is_read && styles.unreadText]}>{item.title}</Text>
-        <Text style={styles.message} numberOfLines={3}>{item.message}</Text>
-        <Text style={styles.date}>
+        <Text style={[styles.title, { color: themeColors.textPrimary }, !item.is_read && { color: isDark ? '#FFF' : '#0F172A', fontWeight: '700' }]}>{item.title}</Text>
+        <Text style={[styles.message, { color: themeColors.textSecondary }]} numberOfLines={3}>{item.message}</Text>
+        <Text style={[styles.date, { color: themeColors.textMuted }]}>
           {new Date(item.created_at).toLocaleDateString()} {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </Text>
       </View>
-      {!item.is_read && <View style={styles.dot} />}
+      {!item.is_read && <View style={[styles.dot, { backgroundColor: themeColors.primary }]} />}
     </TouchableOpacity>
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color={colors.primary} />
+          <Ionicons name="chevron-back" size={28} color={themeColors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notificaciones</Text>
+        <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Notificaciones</Text>
         <View style={{ width: 40 }} />
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+        <ActivityIndicator size="large" color={themeColors.primary} style={styles.loader} />
       ) : (
         <FlatList
           data={notifications}
@@ -107,12 +109,12 @@ export default function NotificationsScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[themeColors.primary]} />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="notifications-off-outline" size={64} color="#CBD5E1" />
-              <Text style={styles.emptyText}>No tienes notificaciones aún</Text>
+              <Ionicons name="notifications-off-outline" size={64} color={themeColors.textMuted} />
+              <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No tienes notificaciones aún</Text>
             </View>
           }
         />

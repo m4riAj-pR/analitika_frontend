@@ -20,6 +20,7 @@ import { notificationsApi } from '../../../src/services/api/notifications';
 import { getClicsPorDia, getMetricas, getTablaClic } from '../../../src/services/api/stats';
 import type { Campaign } from '../../../src/services/api/types';
 import { colors, shadows } from '../../../src/theme/colors';
+import { useTheme } from '../../../src/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -33,6 +34,7 @@ const formatCurrency = (value: number) =>
 // ─── Header Component ────────────────────────────────────────────────────────
 function Header({ unreadCount }: { unreadCount: number }) {
   const router = useRouter();
+  const { colors: themeColors, isDark } = useTheme();
   return (
     <View style={styles.headerContainer}>
       <View style={styles.logoWrapper}>
@@ -49,8 +51,8 @@ function Header({ unreadCount }: { unreadCount: number }) {
           activeOpacity={0.7}
           onPress={() => router.push('/(app)/notifications')}
         >
-          <Ionicons name="notifications" size={28} color={colors.primary} />
-          {unreadCount > 0 && <View style={styles.unreadDot} />}
+          <Ionicons name="notifications" size={28} color={themeColors.primary} />
+          {unreadCount > 0 && <View style={[styles.unreadDot, { borderColor: themeColors.bgPage }]} />}
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -67,11 +69,16 @@ function Header({ unreadCount }: { unreadCount: number }) {
 
 // ─── Campaign Card ───────────────────────────────────────────────────────────
 function CampaignCard({ campaign, onSelect, index }: { campaign: Campaign; onSelect: () => void; index: number }) {
+  const { colors: themeColors, isDark } = useTheme();
   const isAltDesign = index % 2 === 0;
   const isInactive = String(campaign.status).toLowerCase() !== 'active';
 
   return (
-    <View style={[styles.cardContainer, isInactive && styles.cardInactive]}>
+    <View style={[
+      styles.cardContainer, 
+      { backgroundColor: isDark ? '#1E293B' : '#E9E4F5' },
+      isInactive && (isDark ? { backgroundColor: '#1e293b', opacity: 0.6 } : styles.cardInactive)
+    ]}>
       {/* Decoración de fondo */}
       <View style={styles.decorationContainer}>
         {isAltDesign ? (
@@ -86,16 +93,16 @@ function CampaignCard({ campaign, onSelect, index }: { campaign: Campaign; onSel
       </View>
 
       <View style={styles.cardInfo}>
-        <Text style={[styles.cardName, isInactive && { color: '#64748B' }]}>{campaign.name}</Text>
-        <View style={[styles.statusBadgeInline, isInactive ? styles.statusBadgeInactive : styles.statusBadgeActive]}>
-          <Text style={styles.statusBadgeTextInline}>
+        <Text style={[styles.cardName, { color: themeColors.textPrimary }, isInactive && { color: themeColors.textMuted }]}>{campaign.name}</Text>
+        <View style={[styles.statusBadgeInline, isInactive ? (isDark ? { backgroundColor: '#334155' } : styles.statusBadgeInactive) : styles.statusBadgeActive]}>
+          <Text style={[styles.statusBadgeTextInline, { color: isDark ? '#94A3B8' : '#475569' }]}>
             {String(campaign.status).toUpperCase()}
           </Text>
         </View>
       </View>
 
       <TouchableOpacity
-        style={[styles.cardButton, isInactive && { backgroundColor: '#94A3B8' }]}
+        style={[styles.cardButton, { backgroundColor: themeColors.primary }, isInactive && { backgroundColor: isDark ? '#334155' : '#94A3B8' }]}
         activeOpacity={0.8}
         onPress={onSelect}
       >
@@ -108,17 +115,18 @@ function CampaignCard({ campaign, onSelect, index }: { campaign: Campaign; onSel
 // ─── Empty State ─────────────────────────────────────────────────────────────
 function EmptyState() {
   const router = useRouter();
+  const { colors: themeColors, isDark } = useTheme();
   return (
     <View style={emptyStyles.wrapper}>
-      <View style={emptyStyles.iconCircle}>
-        <Ionicons name="layers-outline" size={52} color={colors.primary} />
+      <View style={[emptyStyles.iconCircle, { backgroundColor: isDark ? '#1E293B' : '#F3F0FA' }]}>
+        <Ionicons name="layers-outline" size={52} color={themeColors.primary} />
       </View>
-      <Text style={emptyStyles.title}>No hay campañas</Text>
-      <Text style={emptyStyles.subtitle}>
+      <Text style={[emptyStyles.title, { color: themeColors.textPrimary }]}>No hay campañas</Text>
+      <Text style={[emptyStyles.subtitle, { color: themeColors.textSecondary }]}>
         Parece que aún no has creado ninguna campaña activa.
       </Text>
       <TouchableOpacity
-        style={emptyStyles.cta}
+        style={[emptyStyles.cta, { backgroundColor: themeColors.primary }]}
         activeOpacity={0.85}
         onPress={() => router.push('/(app)/create')}
       >
@@ -131,10 +139,11 @@ function EmptyState() {
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 function KpiCard({ label, value, isCurrency = false }: { label: string; value: number; isCurrency?: boolean }) {
+  const { colors: themeColors, isDark } = useTheme();
   return (
-    <View style={styles.kpiCard}>
-      <Text style={styles.kpiLabel}>{label}</Text>
-      <Text style={isCurrency ? styles.kpiValueCurrency : styles.kpiValue} numberOfLines={1}>
+    <View style={[styles.kpiCard, { backgroundColor: isDark ? '#1E293B' : '#F3F0FA' }]}>
+      <Text style={[styles.kpiLabel, { color: themeColors.textSecondary }]}>{label}</Text>
+      <Text style={[isCurrency ? styles.kpiValueCurrency : styles.kpiValue, { color: themeColors.primary }]} numberOfLines={1}>
         {isCurrency ? formatCurrency(value) : value}
       </Text>
     </View>
@@ -145,6 +154,7 @@ function KpiCard({ label, value, isCurrency = false }: { label: string; value: n
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { campaignId } = useLocalSearchParams();
+  const { colors: themeColors, isDark } = useTheme();
 
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -223,8 +233,8 @@ export default function DashboardScreen() {
 
   if (loadingCampaigns) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, styles.centered, { backgroundColor: themeColors.bgPage }]}>
+        <ActivityIndicator size="large" color={themeColors.primary} />
       </View>
     );
   }
@@ -232,7 +242,7 @@ export default function DashboardScreen() {
   // ─── Vista de Lista ──────────────────────────────────────────────────────────
   if (!selectedCampaign) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
         <Header unreadCount={unreadCount} />
 
         {campaigns.length === 0 ? (
@@ -263,26 +273,26 @@ export default function DashboardScreen() {
   const hasChart = chartValues.length > 0;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
       <View style={styles.detailHeader}>
         <TouchableOpacity onPress={() => setSelectedCampaign(null)} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={colors.primary} />
-          <Text style={styles.backText}>Volver</Text>
+          <Ionicons name="chevron-back" size={24} color={themeColors.primary} />
+          <Text style={[styles.backText, { color: themeColors.primary }]}>Volver</Text>
         </TouchableOpacity>
-        <Text style={styles.detailTitle}>Estadísticas</Text>
+        <Text style={[styles.detailTitle, { color: themeColors.primary }]}>Estadísticas</Text>
         <View style={{ width: 80 }} />
       </View>
 
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]} showsVerticalScrollIndicator={false}>
-        <View style={styles.campaignBanner}>
-          <Text style={styles.campaignBannerText}>{selectedCampaign?.name}</Text>
-          <View style={[styles.statusBadge, selectedCampaign?.status === 'active' && styles.statusBadgeActive]}>
-            <Text style={styles.statusBadgeText}>{selectedCampaign?.status === 'active' ? 'Activa' : 'Inactiva'}</Text>
+        <View style={[styles.campaignBanner, { backgroundColor: isDark ? '#1E293B' : '#F3F0FA', padding: 16, borderRadius: 20 }]}>
+          <Text style={[styles.campaignBannerText, { color: themeColors.textPrimary }]}>{selectedCampaign?.name}</Text>
+          <View style={[styles.statusBadge, selectedCampaign?.status === 'active' ? styles.statusBadgeActive : (isDark ? { backgroundColor: '#334155' } : null)]}>
+            <Text style={[styles.statusBadgeText, { color: isDark ? '#F1F5F9' : '#000' }]}>{selectedCampaign?.status === 'active' ? 'Activa' : 'Inactiva'}</Text>
           </View>
         </View>
 
         {loadingStats ? (
-          <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 40 }} />
+          <ActivityIndicator size="small" color={themeColors.primary} style={{ marginTop: 40 }} />
         ) : (
           <>
             <View style={styles.kpiGrid}>
@@ -292,26 +302,26 @@ export default function DashboardScreen() {
               <KpiCard label="ROI" value={metricas?.roi ?? 0} isCurrency />
             </View>
 
-            <View style={styles.chartCard}>
-              <Text style={styles.sectionTitle}>Clics por Día</Text>
+            <View style={[styles.chartCard, { backgroundColor: themeColors.bgCard }]}>
+              <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Clics por Día</Text>
               {hasChart ? (
                 <LineChart
                   data={{ labels: chartLabels, datasets: [{ data: chartValues }] }}
                   width={width - 80}
                   height={220}
                   chartConfig={{
-                    backgroundColor: '#FFF',
-                    backgroundGradientFrom: '#FFF',
-                    backgroundGradientTo: '#FFF',
-                    color: (opacity = 1) => `rgba(95, 27, 242, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(100, 116, 139, ${opacity})`,
-                    propsForDots: { r: '5', strokeWidth: '2', stroke: colors.primary },
+                    backgroundColor: themeColors.bgCard,
+                    backgroundGradientFrom: themeColors.bgCard,
+                    backgroundGradientTo: themeColors.bgCard,
+                    color: (opacity = 1) => isDark ? `rgba(173, 141, 242, ${opacity})` : `rgba(95, 27, 242, ${opacity})`,
+                    labelColor: (opacity = 1) => themeColors.textSecondary,
+                    propsForDots: { r: '5', strokeWidth: '2', stroke: themeColors.primary },
                   }}
                   bezier
                   style={{ borderRadius: 16, marginTop: 10 }}
                 />
               ) : (
-                <Text style={styles.noDataText}>No hay datos suficientes para la gráfica.</Text>
+                <Text style={[styles.noDataText, { color: themeColors.textMuted }]}>No hay datos suficientes para la gráfica.</Text>
               )}
             </View>
           </>
