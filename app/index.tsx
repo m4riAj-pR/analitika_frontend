@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { Animated, Image, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, palette, typography } from "../src/theme/colors";
+import { me } from "../src/services/api/auth";
 
 export default function Index() {
   const insets = useSafeAreaInsets();
@@ -13,38 +14,54 @@ export default function Index() {
   const screenOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.sequence([
-      // Paso 1: Muestra logo oficial 300x300 Fade In
-      Animated.timing(step1Opacity, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.delay(1200),
-      // Fade Out Paso 1
-      Animated.timing(step1Opacity, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
+    const checkSessionAndRedirect = async () => {
+      try {
+        // Intentamos validar el token actual con el servidor
+        // Si el token es inválido o expiró, authService.me() lanzará un error 401
+        // y el cliente API limpiará automáticamente el almacenamiento.
+        const user = await me();
+        
+        // Si tenemos usuario (ya sea del servidor o del caché por fallback en me())
+        const nextRoute = user ? "/(app)/(tabs)/dashboard" : "/(auth)/login";
 
-      // Paso 2: Plantilla actual con Fade In
-      Animated.timing(step2Opacity, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.delay(1800),
+        Animated.sequence([
+          // Animación de Logo
+          Animated.timing(step1Opacity, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.delay(1000),
+          Animated.timing(step1Opacity, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          // Animación de Texto de Bienvenida
+          Animated.timing(step2Opacity, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.delay(1500),
+          // Salida de pantalla
+          Animated.timing(screenOpacity, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          router.replace(nextRoute as any);
+        });
+      } catch (error: any) {
+        // Si hay un error de autenticación (401), el cliente ya limpió el token.
+        // Si es otro error (como red), me() internamente intenta devolver el caché.
+        console.log("Session validation failed or no session:", error?.message);
+        router.replace("/(auth)/login");
+      }
+    };
 
-      // Fade Out Completo
-      Animated.timing(screenOpacity, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      router.replace("/(auth)/login");
-    });
+    checkSessionAndRedirect();
   }, [router, step1Opacity, step2Opacity, screenOpacity]);
 
   return (
