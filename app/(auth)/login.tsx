@@ -32,6 +32,9 @@ export default function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    const [recoveryLoading, setRecoveryLoading] = useState(false);
+    const [recoveryEmail, setRecoveryEmail] = useState("");
+    const [showRecoveryModal, setShowRecoveryModal] = useState(false);
 
     const handleLogin = async () => {
         if (!email.trim()) {
@@ -72,6 +75,27 @@ export default function Login() {
         }
     };
 
+    const handleRecovery = async () => {
+        if (!recoveryEmail.trim()) {
+            Alert.alert("Campo requerido", "Por favor ingresa tu correo electrónico.");
+            return;
+        }
+        try {
+            setRecoveryLoading(true);
+            const res: any = await authApi.forgotPassword(recoveryEmail.trim());
+            
+            Alert.alert(
+                "Solicitud Procesada", 
+                res.message || "Si el correo está registrado, recibirás instrucciones pronto.",
+                [{ text: "Entendido", onPress: () => setShowRecoveryModal(false) }]
+            );
+        } catch (error: any) {
+            Alert.alert("Error", error.message || "No se pudo procesar la solicitud.");
+        } finally {
+            setRecoveryLoading(false);
+        }
+    };
+
     return (
 
         <KeyboardAvoidingView
@@ -91,7 +115,7 @@ export default function Login() {
                 {/* Logo oficial */}
                 <View style={styles.logoWrapper}>
                     <Image
-                        source={require("../../assets/images/icon.png")}
+                        source={isDark ? require("../../assets/images/icon_negative.png") : require("../../assets/images/icon.png")}
                         style={styles.logoImage}
                         resizeMode="contain"
                     />
@@ -125,6 +149,17 @@ export default function Login() {
                     onChangeText={setPassword}
                     secureTextEntry
                 />
+
+                {/* Olvidaste contraseña */}
+                <TouchableOpacity 
+                    style={styles.forgotPasswordBtn} 
+                    onPress={() => {
+                        setRecoveryEmail(email);
+                        setShowRecoveryModal(true);
+                    }}
+                >
+                    <Text style={[styles.forgotPasswordText, { color: themeColors.primary }]}>¿Olvidaste tu contraseña?</Text>
+                </TouchableOpacity>
 
                 {/* Botón principal */}
                 <TouchableOpacity
@@ -163,6 +198,37 @@ export default function Login() {
                         <Text style={[styles.footerLink, { color: themeColors.primary }]}>Registrate Gratis</Text>
                     </Text>
                 </TouchableOpacity>
+
+                {/* Modal de Recuperación */}
+                <Modal visible={showRecoveryModal} transparent animationType="slide">
+                    <View style={styles.modalOverlay}>
+                        <View style={[styles.modalContent, { backgroundColor: themeColors.bgPage }]}>
+                            <Text style={[styles.modalTitle, { color: themeColors.primary }]}>Recuperar Contraseña</Text>
+                            <Text style={[styles.modalSub, { color: themeColors.textSecondary }]}>
+                                Ingresa tu correo y te enviaremos los pasos para restablecer tu acceso.
+                            </Text>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, width: '100%' }]}
+                                placeholder="tu@email.com"
+                                placeholderTextColor={themeColors.textMuted}
+                                value={recoveryEmail}
+                                onChangeText={setRecoveryEmail}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                            />
+                            <TouchableOpacity
+                                style={[styles.loginButton, { backgroundColor: themeColors.primary, width: '100%' }, recoveryLoading && { opacity: 0.7 }]}
+                                onPress={handleRecovery}
+                                disabled={recoveryLoading}
+                            >
+                                {recoveryLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>Enviar Instrucciones</Text>}
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowRecoveryModal(false)}>
+                                <Text style={[styles.cancelText, { color: themeColors.textMuted }]}>Cancelar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
             </View>
         </KeyboardAvoidingView>
     );
@@ -291,5 +357,44 @@ const styles = StyleSheet.create({
     footerLink: {
         color: "#2D9CFF",
         fontWeight: typography.semibold,
+    },
+    forgotPasswordBtn: {
+        alignSelf: 'flex-end',
+        marginTop: -10,
+        marginBottom: 20,
+        padding: 4,
+    },
+    forgotPasswordText: {
+        fontSize: 13,
+        fontWeight: '500',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    modalContent: {
+        width: '100%',
+        borderRadius: 24,
+        padding: 30,
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        marginBottom: 10,
+    },
+    modalSub: {
+        fontSize: 14,
+        textAlign: 'center',
+        marginBottom: 20,
+        lineHeight: 20,
+    },
+    cancelText: {
+        marginTop: 15,
+        fontSize: 14,
+        fontWeight: '500',
     },
 });

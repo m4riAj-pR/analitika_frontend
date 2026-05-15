@@ -20,7 +20,33 @@ export const palette = {
   black: '#000000',
 } as const;
 
-export const colors = {
+export type ThemeColors = {
+  primary: string;
+  primaryHover: string;
+  secondary: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  textBody: string;
+  textOnPrimary: string;
+  bgPage: string;
+  bgCard: string;
+  bgInput: string;
+  bgAccent: string;
+  bgBlob: string;
+  borderInput: string;
+  borderFocus: string;
+  borderDivider: string;
+  success: string;
+  error: string;
+  warning: string;
+  info: string;
+  checkboxActive: string;
+  checkboxInactive: string;
+  link: string;
+};
+
+export const colors: ThemeColors = {
   // --- Marca ---
   primary: palette.purple1,   // Botones principales, CTA
   primaryHover: palette.purple2,   // Estado presionado del botón principal
@@ -57,9 +83,9 @@ export const colors = {
 
   // --- Links ---
   link: palette.purple4,
-} as const;
+};
 
-export const darkColors: typeof colors = {
+export const darkColors: ThemeColors = {
   // --- Marca ---
   primary: palette.purple2,   // Más brillante en fondo oscuro
   primaryHover: palette.purple3,
@@ -96,7 +122,7 @@ export const darkColors: typeof colors = {
 
   // --- Links ---
   link: palette.purple2,
-} as const;
+};
 
 export const typography = {
   // Tamaños

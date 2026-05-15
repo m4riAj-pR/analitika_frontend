@@ -139,7 +139,7 @@ export default function Register() {
                 {/* Logo */}
                 <View style={styles.logoWrapper}>
                     <Image
-                        source={require("../../assets/images/icon.png")}
+                        source={isDark ? require("../../assets/images/icon_negative.png") : require("../../assets/images/icon.png")}
                         style={styles.logoImage}
                         resizeMode="contain"
                     />

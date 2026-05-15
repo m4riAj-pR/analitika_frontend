@@ -32,8 +32,13 @@ export async function saveUser(user: any) {
     console.log("GUARDANDO USUARIO EN CACHE:", user);
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
     await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-  } catch (err) {
-    console.error("Error guardando usuario (usando memoria RAM temporal):", err);
+  } catch (err: any) {
+    // Si el módulo nativo no está (común en algunos entornos de Expo), usamos solo RAM silenciosamente
+    if (err?.message?.includes('Native module is null')) {
+      console.log("AsyncStorage no disponible, usando memoria RAM temporal.");
+    } else {
+      console.error("Error guardando usuario:", err);
+    }
   }
 }
 
@@ -55,8 +60,14 @@ export async function removeToken() {
   memoryToken = null;
   memoryUser = null;
   try {
-    await AsyncStorage.clear();
-  } catch { }
+    // Solo eliminamos las llaves de autenticación, preservando otras configuraciones (como el tema)
+    const keys = [TOKEN_KEY, USER_KEY, CURRENT_USER_KEY];
+    await AsyncStorage.multiRemove(keys);
+  } catch (err: any) {
+    if (!err?.message?.includes('Native module is null')) {
+      console.error("Error al limpiar la sesión:", err);
+    }
+  }
 }
 
 export async function request<T>(
@@ -112,8 +123,9 @@ export async function request<T>(
       };
 
       if (response.status === 401) {
-        // Solo borrar token si no es una peticion a user-company para evitar ciclo infinito
-        if (!url.includes('/user-company')) {
+        // Solo borrar token si realmente se envió uno y la petición no es a user-company
+        if (token && !url.includes('/user-company')) {
+          console.warn("Sesión expirada detectada (401). Limpiando storage...");
           await removeToken();
         }
       }

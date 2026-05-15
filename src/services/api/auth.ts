@@ -87,11 +87,19 @@ export const updateProfile = async (idPerson: number, data: {
   });
 };
 
+export const forgotPassword = async (email: string) => {
+  return await request("/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+};
+
 export const authApi = {
   register: registerUser,
   login:    loginUser,
   logout:   logoutUser,
   updateProfile,
+  forgotPassword,
   me,
   saveUser,
 };

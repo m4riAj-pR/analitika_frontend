@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import AccountAvatar from '../../../src/components/AccountAvatar';
+import { useProfile } from '../../../src/hooks/useProfile';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   colors,
@@ -43,7 +44,7 @@ const podiumStyles = StyleSheet.create({
 });
 
 // ─── Ranking card ─────────────────────────────────────────────────────────────
-function RankingCard({ item, rank }: { item: TopCampaign; rank: number }) {
+function RankingCard({ item, rank, isManager }: { item: TopCampaign; rank: number; isManager: boolean }) {
   const { colors: themeColors, isDark } = useTheme();
   const isTop = rank === 1;
   const accent = isTop ? themeColors.primary : 'transparent';
@@ -73,7 +74,7 @@ function RankingCard({ item, rank }: { item: TopCampaign; rank: number }) {
       </View>
 
       {/* ROI pill */}
-      {item.roi != null && (
+      {item.roi != null && !isManager && (
         <View style={[styles.roiPill, isTop && styles.roiPillTop]}>
           <Text style={[styles.roiText, isTop && { color: isDark ? '#FFF' : palette.purple3 }]}>
             {item.roi >= 0 ? '+' : ''}{item.roi.toFixed(0)}%
@@ -154,6 +155,8 @@ export default function RankingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: themeColors, isDark } = useTheme();
+  const { profile } = useProfile();
+  const isManager = profile?.id_role === 3;
 
   // Rango: últimos 30 días
   const { start_date, end_date } = useMemo(() => {
@@ -209,7 +212,7 @@ export default function RankingScreen() {
           {/* list */}
           <View style={styles.list}>
             {campaigns.map((item, index) => (
-              <RankingCard key={item.id_campaign} item={item} rank={index + 1} />
+              <RankingCard key={item.id_campaign} item={item} rank={index + 1} isManager={isManager} />
             ))}
           </View>
         </ScrollView>

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -15,6 +15,7 @@ import {
 import { LineChart } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AccountAvatar from '../../../src/components/AccountAvatar';
+import { useProfile } from '../../../src/hooks/useProfile';
 import { campaignsApi } from '../../../src/services/api/campaign';
 import { notificationsApi } from '../../../src/services/api/notifications';
 import { getClicsPorDia, getMetricas, getTablaClic } from '../../../src/services/api/stats';
@@ -39,7 +40,7 @@ function Header({ unreadCount }: { unreadCount: number }) {
     <View style={styles.headerContainer}>
       <View style={styles.logoWrapper}>
         <Image
-          source={require('../../../assets/images/icon.png')}
+          source={isDark ? require('../../../assets/images/icon_negative.png') : require('../../../assets/images/icon.png')}
           style={styles.logoImage}
           resizeMode="contain"
         />
@@ -68,8 +69,12 @@ function Header({ unreadCount }: { unreadCount: number }) {
 }
 
 // ─── Campaign Card ───────────────────────────────────────────────────────────
-function CampaignCard({ campaign, onSelect, index }: { campaign: Campaign; onSelect: () => void; index: number }) {
+function CampaignCard({ campaign, onSelect, index, isOwner }: { campaign: Campaign; onSelect: () => void; index: number; isOwner: boolean }) {
   const { colors: themeColors, isDark } = useTheme();
+  
+  // Extraer creador si existe la firma [Creador: Name]
+  const creatorMatch = campaign.description?.match(/\[Creador: (.*?)\]/);
+  const creatorName = creatorMatch ? creatorMatch[1] : null;
   const isAltDesign = index % 2 === 0;
   const isInactive = String(campaign.status).toLowerCase() !== 'active';
 
@@ -94,6 +99,11 @@ function CampaignCard({ campaign, onSelect, index }: { campaign: Campaign; onSel
 
       <View style={styles.cardInfo}>
         <Text style={[styles.cardName, { color: themeColors.textPrimary }, isInactive && { color: themeColors.textMuted }]}>{campaign.name}</Text>
+        {isOwner && creatorName && (
+          <Text style={{ fontSize: 12, color: themeColors.primary, fontWeight: '600', marginBottom: 4 }}>
+            👤 {creatorName}
+          </Text>
+        )}
         <View style={[styles.statusBadgeInline, isInactive ? (isDark ? { backgroundColor: '#334155' } : styles.statusBadgeInactive) : styles.statusBadgeActive]}>
           <Text style={[styles.statusBadgeTextInline, { color: isDark ? '#94A3B8' : '#475569' }]}>
             {String(campaign.status).toUpperCase()}
@@ -155,6 +165,8 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { campaignId } = useLocalSearchParams();
   const { colors: themeColors, isDark } = useTheme();
+  const { profile } = useProfile();
+  const isManager = profile?.id_role === 3;
 
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -166,15 +178,14 @@ export default function DashboardScreen() {
   const [clicsPorDia, setClicsPorDia] = useState<any[]>([]);
   const [tablaClics, setTablaClics] = useState<any[]>([]);
   const [statsError, setStatsError] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // 1️⃣ Cargar lista de campañas
-  useEffect(() => {
+  const loadData = useCallback(() => {
     campaignsApi
       .getAll()
       .then((data: any) => {
         const all = Array.isArray(data) ? data : (data?.response || []);
-
-        // Mostramos todas las campañas (activas e inactivas)
         setCampaigns(all);
 
         if (campaignId) {
@@ -184,20 +195,37 @@ export default function DashboardScreen() {
             return;
           }
         }
-        setSelectedCampaign(null);
+        
+        // Si ya hay una campaña seleccionada, actualizarla con los datos nuevos
+        setSelectedCampaign(prev => {
+          if (!prev) return prev;
+          const updated = all.find((c: Campaign) => c.id_campaign === prev.id_campaign);
+          return updated || prev;
+        });
+        // Si no hay campaignId o no se encontró, mantenemos el estado actual o reseteamos si es necesario
+        // Pero no reseteamos el selectedCampaign si el usuario ya está viendo una campaña específica
+        // para evitar que se cierre el detalle al recargar.
       })
       .catch((err: any) => {
         console.error("Error loading campaigns:", err);
         setCampaigns([]);
-        setSelectedCampaign(null);
       })
       .finally(() => setLoadingCampaigns(false));
 
-    // Cargar conteo de notificaciones
     notificationsApi.getUnreadCount()
       .then((res: any) => setUnreadCount(res.count || 0))
       .catch(() => setUnreadCount(0));
   }, [campaignId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   // 2️⃣ Cargar estadísticas
   const fetchStats = useCallback(async (campaign: Campaign) => {
@@ -214,9 +242,9 @@ export default function DashboardScreen() {
         getClicsPorDia(campaign.id_campaign),
         getTablaClic(campaign.id_campaign),
       ]);
-      setMetricas(met);
-      setClicsPorDia(Array.isArray(clicsDia) ? clicsDia : []);
-      setTablaClics(Array.isArray(tabla) ? tabla : []);
+      setMetricas(met?.response || met?.data || met);
+      setClicsPorDia(Array.isArray(clicsDia) ? clicsDia : (clicsDia?.data || clicsDia?.response || []));
+      setTablaClics(Array.isArray(tabla) ? tabla : (tabla?.data || tabla?.response || []));
     } catch {
       setStatsError(true);
       setMetricas(null);
@@ -245,16 +273,36 @@ export default function DashboardScreen() {
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
         <Header unreadCount={unreadCount} />
 
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <View style={[styles.searchWrapper, { backgroundColor: themeColors.bgCard }]}>
+            <Ionicons name="search" size={20} color={themeColors.textMuted} />
+            <TextInput
+              style={[styles.searchInput, { color: themeColors.textPrimary }]}
+              placeholder="Buscar campañas..."
+              placeholderTextColor={themeColors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color={themeColors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
         {campaigns.length === 0 ? (
           <EmptyState />
         ) : (
           <FlatList
-            data={campaigns}
+            data={campaigns.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))}
             keyExtractor={(item) => String(item.id_campaign)}
             renderItem={({ item, index }) => (
               <CampaignCard
                 campaign={item}
                 index={index}
+                isOwner={profile?.id_role < 3}
                 onSelect={() => setSelectedCampaign(item)}
               />
             )}
@@ -268,8 +316,22 @@ export default function DashboardScreen() {
   }
 
   // ─── Vista de Detalle ────────────────────────────────────────────────────────
-  const chartLabels = clicsPorDia.map((d: any, i) => d.fecha || d.day || `D${i + 1}`);
-  const chartValues = clicsPorDia.map((d: any) => Number(d.clics || d.count || 0));
+  let chartLabels = clicsPorDia.map((d: any, i) => d.fecha || d.day || `D${i + 1}`);
+  let chartValues = clicsPorDia.map((d: any) => Number(d.clics || d.count || 0));
+  
+  // Si no hay datos de clics por día pero sí hay clics totales, creamos un punto para hoy
+  if (chartValues.length === 0 && (metricas?.clics || 0) > 0) {
+    chartLabels = ['Hoy'];
+    chartValues = [Number(metricas.clics)];
+  }
+
+  // Si solo hay un punto (ya sea original o por el fallback de arriba), 
+  // react-native-chart-kit no dibuja la línea. Agregamos un punto inicial en 0.
+  if (chartValues.length === 1) {
+    chartLabels = ['', ...chartLabels];
+    chartValues = [0, ...chartValues];
+  }
+
   const hasChart = chartValues.length > 0;
 
   return (
@@ -298,8 +360,12 @@ export default function DashboardScreen() {
             <View style={styles.kpiGrid}>
               <KpiCard label="Clics" value={metricas?.clics ?? 0} />
               <KpiCard label="Convers." value={metricas?.conversiones ?? 0} />
-              <KpiCard label="CPC" value={metricas?.cpc ?? 0} isCurrency />
-              <KpiCard label="ROI" value={metricas?.roi ?? 0} isCurrency />
+              {!isManager && (
+                <>
+                  <KpiCard label="CPC" value={metricas?.cpc ?? 0} isCurrency />
+                  <KpiCard label="ROI" value={metricas?.roi ?? 0} isCurrency />
+                </>
+              )}
             </View>
 
             <View style={[styles.chartCard, { backgroundColor: themeColors.bgCard }]}>
@@ -313,15 +379,79 @@ export default function DashboardScreen() {
                     backgroundColor: themeColors.bgCard,
                     backgroundGradientFrom: themeColors.bgCard,
                     backgroundGradientTo: themeColors.bgCard,
+                    decimalPlaces: 0, // Solo números enteros para clics
                     color: (opacity = 1) => isDark ? `rgba(173, 141, 242, ${opacity})` : `rgba(95, 27, 242, ${opacity})`,
                     labelColor: (opacity = 1) => themeColors.textSecondary,
                     propsForDots: { r: '5', strokeWidth: '2', stroke: themeColors.primary },
                   }}
-                  bezier
+                  fromZero={true}
+                  bezier={chartValues.length > 2} // Solo usar curvas si hay suficientes puntos
                   style={{ borderRadius: 16, marginTop: 10 }}
                 />
               ) : (
                 <Text style={[styles.noDataText, { color: themeColors.textMuted }]}>No hay datos suficientes para la gráfica.</Text>
+              )}
+            </View>
+
+            {/* TABLA DE CLICS RECIENTES */}
+            <View style={[styles.tableCard, { backgroundColor: themeColors.bgCard }]}>
+              <Text style={[styles.sectionTitle, { color: themeColors.textPrimary, marginBottom: 15 }]}>Clics Recientes</Text>
+              
+              {tablaClics && tablaClics.length > 0 ? (
+                <View style={styles.tableWrapper}>
+                  {/* Header */}
+                  <View style={[styles.tableRow, styles.tableHeader, { borderBottomColor: themeColors.borderDivider }]}>
+                    <Text style={[styles.tableHeaderCell, { color: themeColors.textMuted, flex: 2 }]}>Fecha/Hora</Text>
+                    <Text style={[styles.tableHeaderCell, { color: themeColors.textMuted, flex: 1.5 }]}>País / Fuente</Text>
+                    <Text style={[styles.tableHeaderCell, { color: themeColors.textMuted, flex: 1.5 }]}>Dispositivo</Text>
+                  </View>
+                  
+                  {/* Body */}
+                  {tablaClics.slice(0, 10).map((click: any, idx: number) => {
+                    const date = new Date(click.created_at || click.fecha);
+                    const dateStr = date.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+                    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    // Simple parser para UserAgent (si existe)
+                    const ua = click.user_agent || click.dispositivo || 'N/A';
+                    let device = 'Web';
+                    if (ua.toLowerCase().includes('android')) device = 'Android';
+                    else if (ua.toLowerCase().includes('iphone') || ua.toLowerCase().includes('ipad')) device = 'iOS';
+                    else if (ua.toLowerCase().includes('mobile')) device = 'Móvil';
+
+                    return (
+                      <View key={idx} style={[styles.tableRow, { borderBottomColor: themeColors.borderDivider }]}>
+                        <View style={{ flex: 2 }}>
+                          <Text style={[styles.tableCell, { color: themeColors.textPrimary }]}>{dateStr}</Text>
+                          <Text style={[styles.tableCellSub, { color: themeColors.textMuted }]}>{timeStr}</Text>
+                        </View>
+                        <View style={{ flex: 1.5 }}>
+                          <Text style={[styles.tableCell, { color: themeColors.textSecondary }]} numberOfLines={1}>{click.pais || 'Desconocido'}</Text>
+                          {click.utm_source && click.utm_source !== 'N/A' && (
+                            <Text style={{ fontSize: 10, color: themeColors.primary, fontWeight: '700', textTransform: 'uppercase' }}>{click.utm_source}</Text>
+                          )}
+                        </View>
+                        <View style={{ flex: 1.5, flexDirection: 'row', alignItems: 'center' }}>
+                          <Ionicons 
+                            name={(device === 'iOS' || device === 'Android' || device === 'Móvil' ? 'smartphone-outline' : 'desktop-outline') as any} 
+                            size={14} 
+                            color={themeColors.textMuted} 
+                            style={{ marginRight: 4 }} 
+                          />
+                          <Text style={[styles.tableCell, { color: themeColors.textSecondary }]} numberOfLines={1}>{device}</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                  
+                  {tablaClics.length > 10 && (
+                    <Text style={[styles.tableFooter, { color: themeColors.textMuted }]}>
+                      Mostrando los últimos 10 de {tablaClics.length} clics
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <Text style={[styles.noDataText, { color: themeColors.textMuted }]}>No hay registros de clics individuales aún.</Text>
               )}
             </View>
           </>
@@ -347,6 +477,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 15,
+  },
+  searchContainer: {
+    paddingHorizontal: 24,
+    marginBottom: 20,
+  },
+  searchWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    height: 50,
+    borderRadius: 15,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
   },
   notificationButton: {
     padding: 4,
@@ -444,7 +590,15 @@ const styles = StyleSheet.create({
   kpiLabel: { fontSize: 14, color: '#666', marginBottom: 4 },
   kpiValue: { fontSize: 24, fontWeight: '700', color: colors.primary },
   kpiValueCurrency: { fontSize: 18, fontWeight: '700', color: colors.primary },
-  chartCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, ...shadows.card },
+  chartCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, ...shadows.card, marginBottom: 20 },
+  tableCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, ...shadows.card },
+  tableWrapper: { width: '100%' },
+  tableRow: { flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 1, alignItems: 'center' },
+  tableHeader: { borderBottomWidth: 2, paddingVertical: 8 },
+  tableHeaderCell: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
+  tableCell: { fontSize: 14, fontWeight: '600' },
+  tableCellSub: { fontSize: 11 },
+  tableFooter: { textAlign: 'center', marginTop: 15, fontSize: 12, fontStyle: 'italic' },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#000' },
   noDataText: { textAlign: 'center', marginTop: 20, color: '#999' },
   statusBadgeInline: {

@@ -29,10 +29,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           setThemeState(savedTheme);
         }
       } catch (e) {
-        console.error('Error loading theme:', e);
+        // Silenciamos el error si AsyncStorage no está listo, usamos el default del sistema
+        console.log('AsyncStorage not ready yet, using system theme');
       }
     };
     loadTheme();
+
+    // Escuchar cambios del sistema si el usuario no ha fijado uno manualmente
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      const loadAndCheck = async () => {
+        try {
+          const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
+          if (!savedTheme) {
+            setThemeState(colorScheme === 'dark' ? 'dark' : 'light');
+          }
+        } catch { }
+      };
+      loadAndCheck();
+    });
+
+    return () => subscription.remove();
   }, []);
 
   const toggleTheme = async () => {

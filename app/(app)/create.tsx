@@ -158,9 +158,21 @@ export default function CreateCampaignScreen() {
   const [status, setStatus] = useState('active');
   const [showStatusModal, setShowStatusModal] = useState(false);
   const statusOptions = CAMPAIGN_STATUS;
+  const PREDEFINED_CHANNELS = [
+    { label: 'Meta (FB/IG)', value: 'Meta' },
+    { label: 'Google Ads', value: 'Google' },
+    { label: 'TikTok Ads', value: 'TikTok' },
+    { label: 'Email Marketing', value: 'Email' },
+    { label: 'WhatsApp', value: 'WhatsApp' },
+    { label: 'Organic (Social/SEO)', value: 'Organic' },
+    { label: 'LinkedIn Ads', value: 'LinkedIn' },
+    { label: 'Twitter / X', value: 'Twitter' },
+    { label: 'Otros', value: 'Others' },
+  ];
 
   // Datos del Canal (entidad separada)
   const [channelName, setChannelName] = useState('');
+  const [showChannelModal, setShowChannelModal] = useState(false);
   const [channelDescription, setChannelDescription] = useState('');
 
   const [startDd, setStartDd] = useState('');
@@ -188,7 +200,12 @@ export default function CreateCampaignScreen() {
           const camp = campaigns.find((c: any) => c.id_campaign === campaignId);
           if (camp) {
             setName(camp.name || '');
-            setDescription(camp.description || '');
+            
+            // Limpiar firma de la descripción si existe [Creador: ...]
+            let cleanDesc = camp.description || '';
+            cleanDesc = cleanDesc.replace(/\[Creador: .*?\]\s*/, '');
+            setDescription(cleanDesc);
+
             setStatus(camp.status || 'active');
             setSpent(camp.spent?.toString() || '');
             
@@ -246,6 +263,29 @@ export default function CreateCampaignScreen() {
       const endDate = (endYyyy && endMm && endDd)
         ? `${endYyyy}-${endMm.padStart(2, '0')}-${endDd.padStart(2, '0')}`
         : null;
+
+      // Validación de Seguridad: Rango de fechas permitido (Año actual o siguiente)
+      const currentYear = new Date().getFullYear();
+      const maxYear = currentYear + 1;
+
+      const validateYear = (yyyy: string, label: string) => {
+        if (!yyyy) return true;
+        const year = parseInt(yyyy);
+        if (year < currentYear) {
+          Alert.alert('Fecha inválida', `La ${label} no puede ser de un año anterior (${currentYear}).`);
+          return false;
+        }
+        if (year > maxYear) {
+          Alert.alert('Fecha inválida', `La ${label} no puede ser posterior al año ${maxYear}.`);
+          return false;
+        }
+        return true;
+      };
+
+      if (!validateYear(startYyyy, 'fecha de inicio') || !validateYear(endYyyy, 'fecha de fin')) {
+        setLoading(false);
+        return;
+      }
 
       // 1. Payload de Campaña
       const campaignPayload = {
@@ -374,6 +414,50 @@ export default function CreateCampaignScreen() {
           </View>
         )}
 
+        {/* Plantillas */}
+        {!campaignId && (
+          <View style={{ marginBottom: spacing.lg }}>
+            <Text style={[styles.fieldLabel, { color: themeColors.textSecondary, marginBottom: spacing.sm }]}>Selecciona una Plantilla</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md }}>
+              <TouchableOpacity
+                style={[styles.templateBtn, { backgroundColor: themeColors.bgCard }]}
+                onPress={() => {
+                  setName(`Ventas - ${new Date().toLocaleString('default', { month: 'long' })}`);
+                  setDescription("Campaña optimizada para maximizar conversiones y ventas directas.");
+                  setChannelName("Meta");
+                }}
+              >
+                <Ionicons name="cart-outline" size={20} color={themeColors.primary} />
+                <Text style={[styles.templateBtnText, { color: themeColors.textPrimary }]}>Ventas</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.templateBtn, { backgroundColor: themeColors.bgCard }]}
+                onPress={() => {
+                  setName(`Leads - ${new Date().toLocaleString('default', { month: 'long' })}`);
+                  setDescription("Enfoque en captación de prospectos y generación de base de datos.");
+                  setChannelName("Google");
+                }}
+              >
+                <Ionicons name="person-add-outline" size={20} color={themeColors.primary} />
+                <Text style={[styles.templateBtnText, { color: themeColors.textPrimary }]}>Leads</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.templateBtn, { backgroundColor: themeColors.bgCard }]}
+                onPress={() => {
+                  setName(`Tráfico - ${new Date().toLocaleString('default', { month: 'long' })}`);
+                  setDescription("Aumento de visibilidad y visitas al sitio web o landing page.");
+                  setChannelName("TikTok");
+                }}
+              >
+                <Ionicons name="megaphone-outline" size={20} color={themeColors.primary} />
+                <Text style={[styles.templateBtnText, { color: themeColors.textPrimary }]}>Tráfico</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
+
         {/* Nombre */}
         <TextInput
           style={[styles.input, { backgroundColor: themeColors.bgCard, color: themeColors.textPrimary }]}
@@ -442,13 +526,49 @@ export default function CreateCampaignScreen() {
         <View style={[styles.divider, { backgroundColor: themeColors.borderDivider }]} />
         <Text style={[styles.sectionTitle, { color: themeColors.primary }]}>Datos del Canal (Opcional)</Text>
         
-        <TextInput
-          style={[styles.input, { backgroundColor: themeColors.bgCard, color: themeColors.textPrimary }]}
-          placeholder="Nombre del Canal (ej. Instagram)"
-          placeholderTextColor={themeColors.textMuted}
-          value={channelName}
-          onChangeText={setChannelName}
-        />
+        <TouchableOpacity
+          style={[styles.selectorRow, { backgroundColor: themeColors.bgCard, marginBottom: spacing.md }]}
+          activeOpacity={0.7}
+          onPress={() => setShowChannelModal(true)}
+        >
+          <Text style={[styles.selectorText, { color: themeColors.textPrimary }, !channelName && { color: themeColors.textMuted }]}>
+            {PREDEFINED_CHANNELS.find(c => c.value === channelName)?.label || 'Seleccionar Canal'}
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
+        </TouchableOpacity>
+
+        {/* Modal selector de canal */}
+        <Modal visible={showChannelModal} transparent animationType="fade">
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowChannelModal(false)}
+          >
+            <View style={[styles.modalContent, { backgroundColor: themeColors.bgPage, maxHeight: '70%' }]}>
+              <Text style={[styles.modalTitle, { color: themeColors.primary }]}>Plataforma de la Campaña</Text>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {PREDEFINED_CHANNELS.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={styles.modalOption}
+                    onPress={() => {
+                      setChannelName(opt.value);
+                      setShowChannelModal(false);
+                    }}
+                  >
+                    <Text style={[
+                      styles.modalOptionText,
+                      { color: themeColors.textPrimary },
+                      channelName === opt.value && { color: themeColors.primary, fontWeight: typography.bold },
+                    ]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         <TextInput
           style={[styles.input, styles.textArea, { backgroundColor: themeColors.bgCard, color: themeColors.textPrimary }]}
@@ -605,6 +725,23 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     color: palette.purple3,
+  },
+  templateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radii.md,
+    gap: spacing.sm,
+    shadowColor: palette.purple2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  templateBtnText: {
+    fontSize: typography.sizeMd,
+    fontWeight: typography.semibold,
   },
 
   /* Date group */
