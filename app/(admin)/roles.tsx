@@ -58,7 +58,7 @@ export default function AdminRoles() {
       const response: any = await api.get(url);
       setData(response || { owners: [], managements: [] });
     } catch (error) {
-      console.error('Error fetching users by role:', error);
+      Alert.alert("Error", "No se pudieron cargar los usuarios por rol.");
     } finally {
       setLoading(false);
     }

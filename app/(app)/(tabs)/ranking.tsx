@@ -69,7 +69,7 @@ function RankingCard({ item, rank, isManager }: { item: TopCampaign; rank: numbe
         <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
         <View style={styles.metaRow}>
           <Ionicons name="star" size={11} color="rgba(255,255,255,0.6)" />
-          <Text style={styles.metaText}>{formatNumber(item.clicks)} clics</Text>
+          <Text style={styles.metaText}>{formatNumber(item.clicks || item.clics)} clics</Text>
         </View>
       </View>
 

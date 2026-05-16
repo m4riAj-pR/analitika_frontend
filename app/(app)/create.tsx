@@ -229,7 +229,7 @@ export default function CreateCampaignScreen() {
             console.log("No se pudo cargar el link trackeable", err);
           }
         } catch (err) {
-          console.error("Error loading campaign:", err);
+          Alert.alert("Error", "No se pudo cargar la campaña.");
         } finally {
           setLoading(false);
         }
@@ -246,10 +246,33 @@ export default function CreateCampaignScreen() {
       return;
     }
 
-    const companyId = profile?.id_company;
+    // Intentar obtener el ID de la empresa de varias fuentes dentro del perfil
+    let companyId = profile?.id_company;
+    
+    if (!companyId && profile?.companies && profile.companies.length > 0) {
+      companyId = profile.companies[0].id_company;
+    }
+
+    // Si sigue sin haber ID y es Super Admin (rol 1), intentar obtener la primera empresa del sistema
+    if (!companyId && profile?.id_role === 1) {
+      try {
+        const { companiesApi } = await import('../services/api/companies');
+        const companies: any = await companiesApi.getCompanies();
+        const list = Array.isArray(companies) ? companies : (companies?.response || []);
+        if (list.length > 0) {
+          companyId = list[0].id_company;
+        }
+      } catch (err) {
+        console.log("Error al intentar obtener empresa fallback para Admin:", err);
+      }
+    }
 
     if (!companyId) {
-      Alert.alert('Error', 'No se encontró la empresa asociada al usuario. Verifica que tu cuenta tenga una empresa asignada.');
+      Alert.alert(
+        'Empresa no detectada', 
+        'No pudimos identificar tu empresa vinculada. Asegúrate de que tu perfil tenga una empresa asignada o contacta a soporte.',
+        [{ text: 'Entendido' }]
+      );
       return;
     }
 
@@ -271,6 +294,7 @@ export default function CreateCampaignScreen() {
       const validateYear = (yyyy: string, label: string) => {
         if (!yyyy) return true;
         const year = parseInt(yyyy);
+        if (isNaN(year)) return true;
         if (year < currentYear) {
           Alert.alert('Fecha inválida', `La ${label} no puede ser de un año anterior (${currentYear}).`);
           return false;
@@ -288,6 +312,12 @@ export default function CreateCampaignScreen() {
       }
 
       // 1. Payload de Campaña
+      let numericSpent = null;
+      if (spent) {
+        numericSpent = parseFloat(spent.replace(',', '.'));
+        if (isNaN(numericSpent)) numericSpent = null;
+      }
+
       const campaignPayload = {
         id_company: Number(companyId),
         name: name.trim(),
@@ -295,27 +325,25 @@ export default function CreateCampaignScreen() {
         status: status,
         start_date: startDate,
         end_date: endDate,
-        spent: spent ? Number(spent) : null,
+        spent: numericSpent,
       };
       console.log("CREATE CAMPAIGN PAYLOAD:", campaignPayload);
 
       // 2. Guardar Campaña
       let newCampaignId: number | null = null;
       if (campaignId) {
-        // Actualización: el backend devuelve {ok: true}
         await campaignsApi.update(campaignId, campaignPayload);
+        newCampaignId = campaignId;
       } else {
-        // Creación: el backend ahora devuelve {ok: true, id_campaign: 123}
         const res: any = await campaignsApi.create(campaignPayload);
-        if (res && res.id_campaign) {
-          newCampaignId = res.id_campaign;
+        if (res && (res.id_campaign || res.id)) {
+          newCampaignId = res.id_campaign || res.id;
         } else {
-          // Fallback por si acaso
+          // Fallback: intentar encontrar la campaña recién creada por nombre
           try {
             const allCampaigns: any = await campaignsApi.list();
-            const justCreated = Array.isArray(allCampaigns)
-              ? allCampaigns.find((c: any) => c.name === campaignPayload.name && c.id_company === campaignPayload.id_company)
-              : null;
+            const list = Array.isArray(allCampaigns) ? allCampaigns : (allCampaigns?.response || []);
+            const justCreated = list.find((c: any) => c.name === campaignPayload.name && Number(c.id_company) === Number(campaignPayload.id_company));
             if (justCreated) {
               newCampaignId = justCreated.id_campaign;
             }
@@ -389,6 +417,22 @@ export default function CreateCampaignScreen() {
         <Text style={[styles.headerTitle, { color: themeColors.primary }]} numberOfLines={2}>
           {name.trim() ? name : `Nombre de la\ncampaña`}
         </Text>
+
+        <TouchableOpacity
+          style={[styles.headerActionBtn, { backgroundColor: themeColors.primary }]}
+          activeOpacity={0.8}
+          onPress={handleCreate}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <View style={styles.headerPlusIcon}>
+              <View style={[styles.plusVerticalHeader, { backgroundColor: '#fff' }]} />
+              <View style={[styles.plusHorizontalHeader, { backgroundColor: '#fff' }]} />
+            </View>
+          )}
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.avatarBtn, { backgroundColor: themeColors.bgCard }]}
@@ -625,10 +669,10 @@ export default function CreateCampaignScreen() {
 
         {/* CTA */}
         <TouchableOpacity
-          style={[styles.createButton, { backgroundColor: themeColors.primary }, (loading || !profile || !profile.id_company) && { opacity: 0.7 }]}
+          style={[styles.createButton, { backgroundColor: themeColors.primary }, loading && { opacity: 0.7 }]}
           activeOpacity={0.85}
           onPress={handleCreate}
-          disabled={loading || sessionLoading || !profile || !profile.id_company}
+          disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
@@ -676,6 +720,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
+  },
+  headerActionBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerPlusIcon: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  plusVerticalHeader: {
+    width: 3,
+    height: 16,
+    borderRadius: 1.5,
+    position: 'absolute',
+  },
+  plusHorizontalHeader: {
+    width: 16,
+    height: 3,
+    borderRadius: 1.5,
+    position: 'absolute',
   },
 
   /* Form */

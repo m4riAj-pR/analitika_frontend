@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import { campaignsApi } from '../services/api/campaign';
 import { TopCampaign } from '../services/api/types';
 
@@ -19,9 +20,10 @@ export function useCampaignsTop(_start_date?: string, _end_date?: string) {
             console.log("LOADING TOP CAMPAIGNS");
             const response: any = await campaignsApi.getTop();
             console.log("TOP CAMPAIGNS RESPONSE:", response);
-            setCampaigns(Array.isArray(response) ? response : []);
+            const data = Array.isArray(response) ? response : (response?.data || response?.response || []);
+            setCampaigns(data);
         } catch (err: any) {
-            console.error('Error fetching top campaigns:', err);
+            Alert.alert("Error", "No se pudo cargar el ranking de campañas.");
             setError(err.message || 'Error al cargar el ranking');
             setCampaigns([]);
         } finally {

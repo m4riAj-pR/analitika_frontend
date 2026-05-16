@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import * as Service from '../services/api/clicks';
 
 export function useClicks() {
@@ -13,7 +14,7 @@ export function useClicks() {
             const response: any = await Service.getAll();
             setClicks(response.response || []);
         } catch (err: any) {
-            console.error('Error fetching clicks:', err);
+            Alert.alert("Error", "No se pudieron cargar los clics.");
             setError(err.message || 'Error al cargar clics');
             setClicks([]);
         } finally {

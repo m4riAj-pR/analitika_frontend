@@ -1,5 +1,6 @@
 // src/services/api/client.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 import { API_BASE_URL, API_TIMEOUT, TOKEN_KEY } from './config';
 import type { ApiError } from './types';
 
@@ -37,7 +38,7 @@ export async function saveUser(user: any) {
     if (err?.message?.includes('Native module is null')) {
       console.log("AsyncStorage no disponible, usando memoria RAM temporal.");
     } else {
-      console.error("Error guardando usuario:", err);
+      Alert.alert("Error", "Error al guardar la información del usuario localmente.");
     }
   }
 }
@@ -65,7 +66,7 @@ export async function removeToken() {
     await AsyncStorage.multiRemove(keys);
   } catch (err: any) {
     if (!err?.message?.includes('Native module is null')) {
-      console.error("Error al limpiar la sesión:", err);
+      Alert.alert("Error", "Ocurrió un problema al cerrar la sesión.");
     }
   }
 }

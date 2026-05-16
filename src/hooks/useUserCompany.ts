@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import * as Service from '../services/api/userCompany';
 
 export function useUserCompany() {
@@ -13,7 +14,7 @@ export function useUserCompany() {
             const response: any = await Service.getAll();
             setUserCompanies(response.response || []);
         } catch (err: any) {
-            console.error('Error fetching user company relations:', err);
+            Alert.alert("Error", "No se pudo cargar la relación usuario-empresa.");
             setError(err.message || 'Error al cargar relaciones usuario-empresa');
             setUserCompanies([]);
         } finally {

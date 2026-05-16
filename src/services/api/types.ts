@@ -47,8 +47,13 @@ export interface TopCampaign {
   id_campaign: number;
   name: string;
   clicks: number;
+  clics?: number; // fallback resilience
   conversions: number;
+  conversiones?: number; // fallback resilience
   roi: number;
+  ingresos?: number;
+  roas?: number;
+  cpa?: number;
 }
 
 export interface User {

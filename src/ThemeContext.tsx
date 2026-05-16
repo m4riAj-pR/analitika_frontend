@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Appearance } from 'react-native';
+import { Appearance, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, darkColors } from './theme/colors';
 
@@ -57,7 +57,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     try {
       await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme);
     } catch (e) {
-      console.error('Error saving theme:', e);
+      Alert.alert("Error", "No se pudo guardar la preferencia de tema.");
     }
   };
 
@@ -66,7 +66,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     try {
       await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme);
     } catch (e) {
-      console.error('Error saving theme:', e);
+      Alert.alert("Error", "No se pudo guardar la preferencia de tema.");
     }
   };
 

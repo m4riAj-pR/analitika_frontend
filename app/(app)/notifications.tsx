@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
   RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -39,7 +40,7 @@ export default function NotificationsScreen() {
       const data = Array.isArray(response) ? response : (response?.response || []);
       setNotifications(data);
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      Alert.alert("Error", "No se pudieron cargar las notificaciones.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -53,7 +54,7 @@ export default function NotificationsScreen() {
         prev.map(n => n.id_notification === id ? { ...n, is_read: true } : n)
       );
     } catch (error) {
-      console.error('Error marking as read:', error);
+      Alert.alert("Error", "No se pudo marcar como leída.");
     }
   };
 

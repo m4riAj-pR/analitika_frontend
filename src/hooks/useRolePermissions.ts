@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import * as Service from '../services/api/rolePermissions';
 
 export function useRolePermissions() {
@@ -13,7 +14,7 @@ export function useRolePermissions() {
             const response: any = await Service.getAll();
             setRolePermissions(response.response || []);
         } catch (err: any) {
-            console.error('Error fetching role permissions:', err);
+            Alert.alert("Error", "No se pudieron cargar los permisos del rol.");
             setError(err.message || 'Error al cargar permisos de rol');
             setRolePermissions([]);
         } finally {

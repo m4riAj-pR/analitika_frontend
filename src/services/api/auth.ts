@@ -1,4 +1,5 @@
 import { getUser, getToken, removeToken, request, saveToken, saveUser } from "./client";
+import { Alert } from "react-native";
 
 export const loginUser = async (emailOrData: any, password?: string) => {
   const email = typeof emailOrData === "object" ? emailOrData.email : emailOrData;
@@ -64,7 +65,7 @@ export const me = async () => {
     return res;
   } catch (err: any) {
     if (err?.status !== 401) {
-      console.error("Error fetching fresh /me info:", err);
+      Alert.alert("Error", "No se pudo actualizar la información del perfil.");
     }
     return await getUser(); // Fallback to cache
   }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import { userCompanyApi } from '../services/api';
 import * as authService from '../services/api/auth';
 
@@ -45,7 +46,7 @@ export function useProfile() {
                             console.warn("No se encontró relación en user-company para el usuario:", user.id_user);
                         }
                     } catch (err) {
-                        console.error('Error buscando en user-company:', err);
+                        Alert.alert("Error", "Ocurrió un problema al sincronizar la información de la empresa.");
                     }
                 }
             }
@@ -53,7 +54,7 @@ export function useProfile() {
             console.log("USEPROFILE RESOLVED USER:", user);
             setProfile(user);
         } catch (err: any) {
-            console.error('Error fetching profile:', err);
+            Alert.alert("Error", "No se pudo cargar la información del perfil.");
             setError(err.message || 'Error al cargar perfil');
         } finally {
             setLoading(false);
@@ -86,7 +87,7 @@ export function useProfile() {
             await fetchProfile();
             return updatedUser;
         } catch (err: any) {
-            console.error('Error updating profile:', err);
+            Alert.alert("Error", "No se pudo actualizar el perfil.");
             throw err;
         } finally {
             setSaving(false);

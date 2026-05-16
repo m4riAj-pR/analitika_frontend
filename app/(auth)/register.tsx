@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -16,6 +17,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { authApi } from "../../src/services/api/auth";
 import {
@@ -43,6 +45,7 @@ export default function Register() {
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [loading, setLoading] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleRegister = async () => {
         console.log("CLICK REGISTER");
@@ -122,10 +125,33 @@ export default function Register() {
             style={[styles.container, { backgroundColor: themeColors.bgPage }]}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-            {/* ── HEADER – blob + logo ── */}
+            {/* ── HEADER – fondo blanco con diagramas de analítica ── */}
             <View style={[styles.header, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
-                {/* Blob superior-izquierdo */}
-                <View style={styles.blobTopLeft} />
+                {/* Diagrama tipo Torta (Pie Chart) - Superior Izquierda */}
+                <View style={styles.blobTopLeft}>
+                    <Svg height="150" width="150" viewBox="0 0 100 100">
+                        <Path d="M50,50 L50,0 A50,50 0 0,1 100,50 Z" fill={palette.purple1} opacity={0.15} />
+                        <Path d="M50,50 L100,50 A50,50 0 0,1 50,100 Z" fill={palette.purple2} opacity={0.1} />
+                        <Path d="M50,50 L50,100 A50,50 0 0,1 0,50 Z" fill={palette.purple3} opacity={0.08} />
+                    </Svg>
+                </View>
+
+                {/* Diagrama tipo Dona (Donut Chart) - Superior Derecha */}
+                <View style={styles.blobTopRight}>
+                    <Svg height="110" width="110" viewBox="0 0 100 100">
+                        <Circle cx="50" cy="50" r="40" stroke={palette.purple2} strokeWidth="15" fill="none" opacity={0.12} strokeDasharray="180 100" />
+                        <Circle cx="50" cy="50" r="40" stroke={palette.purple1} strokeWidth="15" fill="none" opacity={0.15} strokeDasharray="80 200" />
+                    </Svg>
+                </View>
+
+                {/* Diagrama de Barras Estilizado - Lateral Izquierdo */}
+                <View style={styles.blobMidLeft}>
+                    <Svg height="60" width="60" viewBox="0 0 100 100">
+                        <Rect x="10" y="50" width="15" height="40" rx="5" fill={palette.purple1} opacity={0.1} />
+                        <Rect x="35" y="30" width="15" height="60" rx="5" fill={palette.purple2} opacity={0.12} />
+                        <Rect x="60" y="10" width="15" height="80" rx="5" fill={palette.purple3} opacity={0.15} />
+                    </Svg>
+                </View>
 
                 {/* Botón volver */}
                 <TouchableOpacity
@@ -229,14 +255,26 @@ export default function Register() {
                         {/* Contraseña */}
                         <View style={styles.inputGroup}>
                             <Text style={[styles.label, { color: themeColors.textSecondary }]}>Contraseña</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
-                                placeholder="Mínimo 8 caracteres"
-                                placeholderTextColor={themeColors.textMuted}
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                            />
+                            <View style={styles.passwordContainer}>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput, flex: 1 }]}
+                                    placeholder="Mínimo 8 caracteres"
+                                    placeholderTextColor={themeColors.textMuted}
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry={!showPassword}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeIcon}
+                                    onPress={() => setShowPassword(!showPassword)}
+                                >
+                                    <Ionicons
+                                        name={showPassword ? "eye-off-outline" : "eye-outline"}
+                                        size={22}
+                                        color={themeColors.primary}
+                                    />
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
                         {/* Checkbox Términos y Condiciones */}
@@ -266,16 +304,23 @@ export default function Register() {
 
                         {/* Botón Registrarse */}
                         <TouchableOpacity
-                            style={[styles.registerButton, { backgroundColor: themeColors.primary }, loading && { opacity: 0.7 }]}
+                            style={[styles.registerButtonContainer, loading && { opacity: 0.7 }]}
                             activeOpacity={0.85}
                             onPress={handleRegister}
                             disabled={loading}
                         >
-                            {loading ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={styles.registerButtonText}>Registrarse</Text>
-                            )}
+                            <LinearGradient
+                                colors={[themeColors.primary, themeColors.primaryHover || themeColors.primary]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.registerButtonGradient}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text style={styles.registerButtonText}>Registrarse</Text>
+                                )}
+                            </LinearGradient>
                         </TouchableOpacity>
 
                         {/* Footer */}
@@ -356,6 +401,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         position: "relative",
+        overflow: 'hidden',
     },
     blobTopLeft: {
         position: "absolute",
@@ -363,9 +409,21 @@ const styles = StyleSheet.create({
         left: -30,
         width: 150,
         height: 150,
-        borderRadius: 75,
-        backgroundColor: colors.bgBlob,
-        opacity: 0.4,
+    },
+    blobTopRight: {
+        position: "absolute",
+        top: -10,
+        right: -25,
+        width: 110,
+        height: 110,
+    },
+    blobMidLeft: {
+        position: "absolute",
+        bottom: 20,
+        left: 5,
+        width: 60,
+        height: 60,
+        transform: [{ rotate: '-15deg' }]
     },
     logoWrapper: {
         alignItems: "center",
@@ -485,22 +543,37 @@ const styles = StyleSheet.create({
     },
 
     /* Botón */
-    registerButton: {
-        backgroundColor: colors.primary,
+    registerButtonContainer: {
+        marginBottom: spacing.xxl,
+        borderRadius: radii.pill,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        elevation: 8,
+    },
+    registerButtonGradient: {
         borderRadius: radii.pill,
         paddingVertical: 18,
         alignItems: "center",
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
-        marginBottom: spacing.xxl,
+        justifyContent: 'center',
     },
     registerButtonText: {
         color: "#fff",
         fontSize: typography.sizeLg,
         fontWeight: typography.bold,
+        letterSpacing: 0.5,
+    },
+    passwordContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    eyeIcon: {
+        position: 'absolute',
+        right: 15,
+        height: '100%',
+        justifyContent: 'center',
+        paddingHorizontal: 10,
     },
 
     /* Footer */

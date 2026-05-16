@@ -1,10 +1,13 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import {
     ActivityIndicator,
     Alert,
     Image,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     StyleSheet,
     Text,
@@ -12,11 +15,13 @@ import {
     TouchableOpacity,
     View
 } from "react-native";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { authApi } from "../../src/services/api/auth";
 
 import {
     colors,
+    palette,
     radii,
     sharedStyles,
     spacing,
@@ -35,6 +40,7 @@ export default function Login() {
     const [recoveryLoading, setRecoveryLoading] = useState(false);
     const [recoveryEmail, setRecoveryEmail] = useState("");
     const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleLogin = async () => {
         if (!email.trim()) {
@@ -69,7 +75,7 @@ export default function Login() {
             }
 
         } catch (error: any) {
-            console.error("Login Error:", error.message || "Credenciales incorrectas");
+            Alert.alert("Error de Inicio de Sesión", error.message || "Credenciales incorrectas");
         } finally {
             setLoading(false);
         }
@@ -102,16 +108,64 @@ export default function Login() {
             style={[styles.container, { backgroundColor: themeColors.bgPage }]}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-            {/* ── HEADER – fondo blanco con blobs y logo ── */}
+            {/* ── HEADER – fondo blanco con diagramas de analítica ── */}
             <View style={[styles.header, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
-                {/* Blob superior-izquierdo (grande, cortado) */}
-                <View style={styles.blobTopLeft} />
+                {/* Diagrama tipo Torta (Pie Chart) - Superior Izquierda */}
+                <View style={styles.blobTopLeft}>
+                    <Svg height="160" width="160" viewBox="0 0 100 100">
+                        {/* Slice 1 */}
+                        <Path d="M50,50 L50,0 A50,50 0 0,1 100,50 Z" fill={palette.purple1} opacity={0.15} />
+                        {/* Slice 2 */}
+                        <Path d="M50,50 L100,50 A50,50 0 0,1 50,100 Z" fill={palette.purple2} opacity={0.1} />
+                        {/* Slice 3 */}
+                        <Path d="M50,50 L50,100 A50,50 0 0,1 0,50 Z" fill={palette.purple3} opacity={0.08} />
+                    </Svg>
+                </View>
 
-                {/* Blob superior-derecho (mediano, cortado) */}
-                <View style={styles.blobTopRight} />
+                {/* Diagrama tipo Dona (Donut Chart) - Superior Derecha */}
+                <View style={styles.blobTopRight}>
+                    <Svg height="120" width="120" viewBox="0 0 100 100">
+                        <Circle cx="50" cy="50" r="40" stroke={palette.purple2} strokeWidth="15" fill="none" opacity={0.12} strokeDasharray="180 100" />
+                        <Circle cx="50" cy="50" r="40" stroke={palette.purple1} strokeWidth="15" fill="none" opacity={0.15} strokeDasharray="80 200" />
+                    </Svg>
+                </View>
 
-                {/* Blob lateral-izquierdo (pequeño, a media altura) */}
-                <View style={styles.blobMidLeft} />
+                {/* Diagrama de Barras Estilizado - Lateral Izquierdo */}
+                <View style={styles.blobMidLeft}>
+                    <Svg height="70" width="70" viewBox="0 0 100 100">
+                        <Rect x="10" y="50" width="15" height="40" rx="5" fill={palette.purple1} opacity={0.1} />
+                        <Rect x="35" y="30" width="15" height="60" rx="5" fill={palette.purple2} opacity={0.12} />
+                        <Rect x="60" y="10" width="15" height="80" rx="5" fill={palette.purple3} opacity={0.15} />
+                    </Svg>
+                </View>
+
+                {/* Diagrama de Líneas (Trend Chart) - Lateral Derecho */}
+                <View style={styles.blobMidRight}>
+                    <Svg height="80" width="100" viewBox="0 0 100 100">
+                        <Path 
+                            d="M10,80 Q30,20 50,50 T90,10" 
+                            fill="none" 
+                            stroke={palette.purple1} 
+                            strokeWidth="5" 
+                            opacity={0.15} 
+                        />
+                        <Circle cx="10" cy="80" r="4" fill={palette.purple1} opacity={0.2} />
+                        <Circle cx="50" cy="50" r="4" fill={palette.purple1} opacity={0.2} />
+                        <Circle cx="90" cy="10" r="4" fill={palette.purple1} opacity={0.2} />
+                    </Svg>
+                </View>
+
+                {/* Puntos de Datos Dispersos - Superior Centro */}
+                <View style={styles.blobTopCenter}>
+                    <Svg height="60" width="100" viewBox="0 0 100 60">
+                        <Circle cx="20" cy="20" r="3" fill={palette.purple2} opacity={0.1} />
+                        <Circle cx="50" cy="10" r="4" fill={palette.purple1} opacity={0.15} />
+                        <Circle cx="80" cy="30" r="3" fill={palette.purple3} opacity={0.1} />
+                        <Circle cx="40" cy="40" r="5" fill={palette.purple2} opacity={0.08} />
+                        <Circle cx="70" cy="50" r="3" fill={palette.purple1} opacity={0.12} />
+                    </Svg>
+                </View>
+
                 {/* Logo oficial */}
                 <View style={styles.logoWrapper}>
                     <Image
@@ -127,28 +181,44 @@ export default function Login() {
                 <Text style={[styles.title, { color: themeColors.primary }]}>Inicio de Sesion</Text>
 
                 {/* Email */}
-                <Text style={[styles.label, { color: themeColors.primary }]}>Correo Electrónico</Text>
-                <TextInput
-                    style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary }]}
-                    placeholder="Correo Electrónico"
-                    placeholderTextColor={themeColors.textMuted}
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                />
+                <View style={styles.inputGroup}>
+                    <Text style={[styles.label, { color: themeColors.textSecondary }]}>Correo Electrónico</Text>
+                    <TextInput
+                        style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
+                        placeholder="Correo Electrónico"
+                        placeholderTextColor={themeColors.textMuted}
+                        value={email}
+                        onChangeText={setEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                    />
+                </View>
 
                 {/* Contraseña */}
-                <Text style={[styles.label, { color: themeColors.primary }]}>Contraseña</Text>
-                <TextInput
-                    style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary }]}
-                    placeholder="Contraseña"
-                    placeholderTextColor={themeColors.textMuted}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                />
+                <View style={styles.inputGroup}>
+                    <Text style={[styles.label, { color: themeColors.textSecondary }]}>Contraseña</Text>
+                    <View style={styles.passwordContainer}>
+                        <TextInput
+                            style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput, flex: 1, marginBottom: 0 }]}
+                            placeholder="Contraseña"
+                            placeholderTextColor={themeColors.textMuted}
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry={!showPassword}
+                        />
+                        <TouchableOpacity 
+                            style={styles.eyeIcon} 
+                            onPress={() => setShowPassword(!showPassword)}
+                        >
+                            <Ionicons 
+                                name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                                size={22} 
+                                color={themeColors.primary} 
+                            />
+                        </TouchableOpacity>
+                    </View>
+                </View>
 
                 {/* Olvidaste contraseña */}
                 <TouchableOpacity 
@@ -163,16 +233,23 @@ export default function Login() {
 
                 {/* Botón principal */}
                 <TouchableOpacity
-                    style={[styles.loginButton, { backgroundColor: themeColors.primary }, loading && { opacity: 0.7 }]}
+                    style={[styles.loginButtonContainer, loading && { opacity: 0.7 }]}
                     activeOpacity={0.85}
                     onPress={handleLogin}
                     disabled={loading}
                 >
-                    {loading ? (
-                        <ActivityIndicator color={themeColors.textOnPrimary} />
-                    ) : (
-                        <Text style={styles.loginButtonText}>Iniciar Sesion</Text>
-                    )}
+                    <LinearGradient
+                        colors={[themeColors.primary, themeColors.primaryHover || themeColors.primary]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.loginButtonGradient}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color={themeColors.textOnPrimary} />
+                        ) : (
+                            <Text style={styles.loginButtonText}>Iniciar Sesion</Text>
+                        )}
+                    </LinearGradient>
                 </TouchableOpacity>
 
                 {/* Divider */}
@@ -217,11 +294,22 @@ export default function Login() {
                                 autoCapitalize="none"
                             />
                             <TouchableOpacity
-                                style={[styles.loginButton, { backgroundColor: themeColors.primary, width: '100%' }, recoveryLoading && { opacity: 0.7 }]}
+                                style={[styles.loginButtonContainer, { width: '90%', alignSelf: 'center' }, recoveryLoading && { opacity: 0.7 }]}
                                 onPress={handleRecovery}
                                 disabled={recoveryLoading}
                             >
-                                {recoveryLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>Enviar Instrucciones</Text>}
+                                <LinearGradient
+                                    colors={[themeColors.primary, themeColors.primaryHover || themeColors.primary]}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={[styles.loginButtonGradient, { paddingVertical: 14 }]}
+                                >
+                                    {recoveryLoading ? (
+                                        <ActivityIndicator color="#fff" />
+                                    ) : (
+                                        <Text style={[styles.loginButtonText, { fontSize: 15 }]}>Enviar código de recuperación</Text>
+                                    )}
+                                </LinearGradient>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={() => setShowRecoveryModal(false)}>
                                 <Text style={[styles.cancelText, { color: themeColors.textMuted }]}>Cancelar</Text>
@@ -242,7 +330,7 @@ const styles = StyleSheet.create({
 
     /* ── HEADER ── */
     header: {
-        flex: 0.48,
+        flex: 0.46,
         backgroundColor: colors.bgPage,
         justifyContent: "center",
         alignItems: "center",
@@ -250,16 +338,13 @@ const styles = StyleSheet.create({
         position: "relative",
     },
 
-    /* Blobs decorativos */
+    /* Diagramas decorativos (antes blobs) */
     blobTopLeft: {
         position: "absolute",
-        top: -55,
+        top: -45,
         left: -35,
         width: 160,
         height: 160,
-        borderRadius: 80,
-        backgroundColor: colors.bgBlob,
-        opacity: 0.4,
     },
     blobTopRight: {
         position: "absolute",
@@ -267,19 +352,29 @@ const styles = StyleSheet.create({
         right: -30,
         width: 120,
         height: 120,
-        borderRadius: 60,
-        backgroundColor: colors.bgBlob,
-        opacity: 0.4,
     },
     blobMidLeft: {
         position: "absolute",
-        bottom: 30,
-        left: -10,
+        bottom: 40,
+        left: 5,
         width: 70,
         height: 70,
-        borderRadius: 35,
-        backgroundColor: colors.bgBlob,
-        opacity: 0.3,
+        transform: [{ rotate: '-15deg' }]
+    },
+    blobMidRight: {
+        position: "absolute",
+        bottom: 60,
+        right: -10,
+        width: 100,
+        height: 80,
+        transform: [{ rotate: '10deg' }]
+    },
+    blobTopCenter: {
+        position: "absolute",
+        top: 20,
+        alignSelf: 'center',
+        width: 100,
+        height: 60,
     },
 
     /* Logo */
@@ -288,27 +383,28 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
     logoImage: {
-        width: 300,
-        height: 400,
+        width: 290,
+        height: 290,
     },
 
     /* ── BOTTOM SHEET ── */
     sheet: {
-        flex: 0.52,
+        flex: 0.54,
         backgroundColor: colors.bgAccent,
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
         paddingHorizontal: spacing.xxl,
-        paddingTop: spacing.xxxl,
+        paddingTop: spacing.xl,
         paddingBottom: spacing.xxl,
+        justifyContent: 'center',
     },
 
     title: {
-        fontSize: typography.size3xl,
+        fontSize: typography.size4xl,
         fontWeight: typography.bold,
         color: colors.primary,
         textAlign: "center",
-        marginBottom: spacing.xxl,
+        marginBottom: spacing.md,
     },
     label: {
         fontSize: typography.sizeSm,
@@ -318,28 +414,53 @@ const styles = StyleSheet.create({
         marginLeft: spacing.xs,
     },
 
+    inputGroup: {
+        marginBottom: spacing.lg,
+    },
     input: {
         backgroundColor: colors.bgInput,
-        borderRadius: radii.lg,
-        paddingHorizontal: spacing.xl,
-        paddingVertical: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: radii.md,
+        paddingHorizontal: spacing.lg,
+        paddingVertical: Platform.OS === "ios" ? 16 : 14,
         fontSize: typography.sizeMd,
         color: colors.primary,
-        marginBottom: spacing.lg,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
-        elevation: 2,
+    },
+    passwordContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: spacing.md,
+    },
+    eyeIcon: {
+        position: 'absolute',
+        right: 15,
+        height: '100%',
+        justifyContent: 'center',
+        paddingHorizontal: 10,
     },
 
-    loginButton: {
-        ...sharedStyles.primaryButton,
-        marginTop: spacing.sm,
-        marginBottom: spacing.xl,
+    loginButtonContainer: {
+        marginTop: spacing.xs,
+        marginBottom: spacing.lg,
+        borderRadius: radii.pill,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        elevation: 8,
+    },
+    loginButtonGradient: {
+        borderRadius: radii.pill,
+        paddingVertical: spacing.lg,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     loginButtonText: {
-        ...sharedStyles.primaryButtonText,
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 17,
+        letterSpacing: 0.5,
     },
 
     divider: {

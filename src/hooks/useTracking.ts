@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import * as Service from '../services/api/tracking';
 
 export function useTracking() {
@@ -13,7 +14,7 @@ export function useTracking() {
             const response: any = await Service.getAll();
             setLinks(response.response || []);
         } catch (err: any) {
-            console.error('Error fetching tracking links:', err);
+            Alert.alert("Error", "No se pudieron cargar los enlaces de seguimiento.");
             setError(err.message || 'Error al cargar enlaces de seguimiento');
             setLinks([]);
         } finally {

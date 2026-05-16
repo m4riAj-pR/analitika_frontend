@@ -7,6 +7,7 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,7 +41,7 @@ export default function AdminCompanies() {
       const response: any = await api.get('/analitika/admin/companies');
       setCompanies(Array.isArray(response) ? response : (response?.response || []));
     } catch (error) {
-      console.error('Error fetching admin companies:', error);
+      Alert.alert("Error", "No se pudieron cargar las empresas.");
     } finally {
       setLoading(false);
     }

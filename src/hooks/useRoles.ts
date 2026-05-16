@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import * as Service from '../services/api/roles';
 
 export function useRoles() {
@@ -13,7 +14,7 @@ export function useRoles() {
             const response: any = await Service.getAll();
             setRoles(response.response || []);
         } catch (err: any) {
-            console.error('Error fetching roles:', err);
+            Alert.alert("Error", "No se pudieron cargar los roles.");
             setError(err.message || 'Error al cargar roles');
             setRoles([]);
         } finally {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import * as Service from '../services/api/channels';
 
 export function useChannels() {
@@ -13,7 +14,7 @@ export function useChannels() {
             const raw: any = await Service.getAll();
             setChannels(Array.isArray(raw) ? raw : raw?.response || []);
         } catch (err: any) {
-            console.error('Error fetching channels:', err);
+            Alert.alert("Error", "No se pudieron cargar los canales.");
             setError(err.message || 'Error al cargar canales');
             setChannels([]);
         } finally {

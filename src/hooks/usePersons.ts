@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import * as Service from '../services/api/persons';
 
 export function usePersons() {
@@ -13,7 +14,7 @@ export function usePersons() {
             const response: any = await Service.getAll();
             setPersons(response.response || []);
         } catch (err: any) {
-            console.error('Error fetching persons:', err);
+            Alert.alert("Error", "No se pudieron cargar los datos de personas.");
             setError(err.message || 'Error al cargar personas');
             setPersons([]);
         } finally {

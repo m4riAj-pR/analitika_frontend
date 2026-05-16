@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import * as Service from '../services/api/permissions';
 
 export function usePermissions() {
@@ -13,7 +14,7 @@ export function usePermissions() {
             const response: any = await Service.getAll();
             setPermissions(response.response || []);
         } catch (err: any) {
-            console.error('Error fetching permissions:', err);
+            Alert.alert("Error", "No se pudieron cargar los permisos.");
             setError(err.message || 'Error al cargar permisos');
             setPermissions([]);
         } finally {

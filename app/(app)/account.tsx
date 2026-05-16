@@ -71,7 +71,7 @@ export default function AccountScreen() {
       const filtered = allUsers.filter((u: any) => u.id_role === 3);
       setManagers(filtered);
     } catch (err) {
-      console.error("Error fetching managers:", err);
+      Alert.alert("Error", "No se pudieron cargar los empleados.");
     } finally {
       setLoadingManagers(false);
     }
@@ -108,7 +108,6 @@ export default function AccountScreen() {
         fetchManagers();
       }
     } catch (err: any) {
-      console.error("Error creating manager:", err);
       Alert.alert('Error', err.message || 'No se pudo registrar al manager.');
     } finally {
       setLoadingManagers(false);

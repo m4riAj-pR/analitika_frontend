@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import * as Service from '../services/api/companies';
 
 export function useCompanies() {
@@ -13,7 +14,7 @@ export function useCompanies() {
             const response: any = await Service.getAll();
             setCompanies(response.response || []);
         } catch (err: any) {
-            console.error('Error fetching companies:', err);
+            Alert.alert("Error", "No se pudieron cargar las empresas.");
             setError(err.message || 'Error al cargar empresas');
             setCompanies([]);
         } finally {

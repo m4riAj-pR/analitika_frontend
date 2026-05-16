@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import * as Service from '../services/api/users';
 
 export function useUsers() {
@@ -13,7 +14,7 @@ export function useUsers() {
             const raw: any = await Service.getAll();
             setUsers(Array.isArray(raw) ? raw : raw?.response || []);
         } catch (err: any) {
-            console.error('Error fetching users:', err);
+            Alert.alert("Error", "No se pudieron cargar los usuarios.");
             setError(err.message || 'Error al cargar usuarios');
             setUsers([]);
         } finally {

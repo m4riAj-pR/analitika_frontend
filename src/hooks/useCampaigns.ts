@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import { campaignsApi } from '../services/api/campaign';
 import { Campaign } from '../services/api/types';
 import { useProfile } from './useProfile';
@@ -18,7 +19,7 @@ export function useCampaigns() {
             const data = Array.isArray(response) ? response : response?.response || [];
             setCampaigns(data);
         } catch (err: any) {
-            console.error('Error fetching campaigns:', err);
+            Alert.alert("Error", "No se pudieron cargar las campañas.");
             setError(err.message || 'Error al cargar campañas');
             setCampaigns([]);
         } finally {

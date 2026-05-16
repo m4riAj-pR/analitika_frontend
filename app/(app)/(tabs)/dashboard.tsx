@@ -3,16 +3,18 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   FlatList,
   Image,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { LineChart } from 'react-native-chart-kit';
+import { LineChart, BarChart } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AccountAvatar from '../../../src/components/AccountAvatar';
 import { useProfile } from '../../../src/hooks/useProfile';
@@ -207,7 +209,7 @@ export default function DashboardScreen() {
         // para evitar que se cierre el detalle al recargar.
       })
       .catch((err: any) => {
-        console.error("Error loading campaigns:", err);
+        Alert.alert("Error", "No se pudieron cargar las campañas. Por favor, intenta de nuevo.");
         setCampaigns([]);
       })
       .finally(() => setLoadingCampaigns(false));
@@ -237,19 +239,66 @@ export default function DashboardScreen() {
     setStatsError(false);
 
     try {
-      const [met, clicsDia, tabla] = await Promise.all([
+      // Usamos Promise.allSettled para que si falla uno (ej. la tabla de clics), los KPIs sigan cargando
+      const results = await Promise.allSettled([
         getMetricas(campaign.id_campaign),
         getClicsPorDia(campaign.id_campaign),
         getTablaClic(campaign.id_campaign),
       ]);
-      setMetricas(met?.response || met?.data || met);
-      setClicsPorDia(Array.isArray(clicsDia) ? clicsDia : (clicsDia?.data || clicsDia?.response || []));
-      setTablaClics(Array.isArray(tabla) ? tabla : (tabla?.data || tabla?.response || []));
-    } catch {
+
+      const [resMet, resClicsDia, resTabla] = results;
+
+      if (resMet.status === 'fulfilled') {
+        const met = resMet.value;
+        setMetricas(met?.response || met?.data || met);
+      } else {
+        console.log("Error loading metrics:", resMet.reason);
+        setMetricas(null);
+      }
+
+      if (resClicsDia.status === 'fulfilled') {
+        const clicsDia = resClicsDia.value;
+        setClicsPorDia(Array.isArray(clicsDia) ? clicsDia : (clicsDia?.data || clicsDia?.response || []));
+      } else {
+        console.log("Error loading clicks per day:", resClicsDia.reason);
+        setClicsPorDia([]);
+      }
+
+      let data = [];
+      if (resTabla.status === 'fulfilled') {
+        const tabla = resTabla.value;
+        data = Array.isArray(tabla) 
+          ? tabla 
+          : (tabla?.data || tabla?.response || tabla?.clics || tabla?.clicks || tabla?.list || tabla?.items || []);
+      }
+
+      // FALLBACK SI FALLA O ESTÁ VACÍO: Si no hay datos o la petición falló, pero sabemos que hay clics
+      if (data.length === 0 && (metricas?.clics || metricas?.clicks || 0) > 0) {
+        try {
+          const { clicksApi } = await import('../../../src/services/api/clicks');
+          const fallbackRes: any = await clicksApi.getAll();
+          const allClicks = Array.isArray(fallbackRes) ? fallbackRes : (fallbackRes?.response || fallbackRes?.data || []);
+          
+          // Filtrar localmente por campaña
+          data = allClicks.filter((c: any) => 
+            Number(c.id_campaign) === Number(campaign.id_campaign)
+          );
+          console.log(`FALLBACK SUCCESS: Se encontraron ${data.length} clics en el endpoint general.`);
+        } catch (err) {
+          console.log("Fallback clicks fetch failed:", err);
+        }
+      }
+
+      setTablaClics(data);
+      
+      // Solo mostramos error general si fallaron los KPIs básicos (métricas)
+      if (resMet.status === 'rejected') {
+        setStatsError(true);
+      }
+
+    } catch (err) {
+      console.log("General error in fetchStats:", err);
       setStatsError(true);
-      setMetricas(null);
-      setClicsPorDia([]);
-      setTablaClics([]);
     } finally {
       setLoadingStats(false);
     }
@@ -316,33 +365,21 @@ export default function DashboardScreen() {
   }
 
   // ─── Vista de Detalle ────────────────────────────────────────────────────────
-  let chartLabels = clicsPorDia.map((d: any, i) => d.fecha || d.day || `D${i + 1}`);
-  let chartValues = clicsPorDia.map((d: any) => Number(d.clics || d.count || 0));
-  
-  // Si no hay datos de clics por día pero sí hay clics totales, creamos un punto para hoy
-  if (chartValues.length === 0 && (metricas?.clics || 0) > 0) {
-    chartLabels = ['Hoy'];
-    chartValues = [Number(metricas.clics)];
-  }
-
-  // Si solo hay un punto (ya sea original o por el fallback de arriba), 
-  // react-native-chart-kit no dibuja la línea. Agregamos un punto inicial en 0.
-  if (chartValues.length === 1) {
-    chartLabels = ['', ...chartLabels];
-    chartValues = [0, ...chartValues];
-  }
-
-  const hasChart = chartValues.length > 0;
+  const chartLabels = clicsPorDia.map((d: any, i) => d.fecha || d.date || d.day || `D${i + 1}`);
+  const chartValues = clicsPorDia.map((d: any) => Number(d.clics || d.clicks || d.count || 0));
+  const hasChart = chartValues.length > 0 && chartValues.some(v => v > 0);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
       <View style={styles.detailHeader}>
-        <TouchableOpacity onPress={() => setSelectedCampaign(null)} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={themeColors.primary} />
-          <Text style={[styles.backText, { color: themeColors.primary }]}>Volver</Text>
+        <TouchableOpacity
+          onPress={() => setSelectedCampaign(null)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="arrow-back" size={26} color={themeColors.primary} />
         </TouchableOpacity>
-        <Text style={[styles.detailTitle, { color: themeColors.primary }]}>Estadísticas</Text>
-        <View style={{ width: 80 }} />
+        <Text style={[styles.detailTitle, { color: themeColors.primary }]} numberOfLines={1}>Detalle de Campaña</Text>
+        <View style={{ width: 26 }} />
       </View>
 
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]} showsVerticalScrollIndicator={false}>
@@ -354,16 +391,22 @@ export default function DashboardScreen() {
         </View>
 
         {loadingStats ? (
-          <ActivityIndicator size="small" color={themeColors.primary} style={{ marginTop: 40 }} />
+          <View style={{ marginTop: 60, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={themeColors.primary} />
+            <Text style={{ color: themeColors.textSecondary, marginTop: 10 }}>Cargando estadísticas...</Text>
+          </View>
         ) : (
           <>
             <View style={styles.kpiGrid}>
-              <KpiCard label="Clics" value={metricas?.clics ?? 0} />
-              <KpiCard label="Convers." value={metricas?.conversiones ?? 0} />
+              <KpiCard label="Clics" value={(metricas?.clics || metricas?.clicks) ?? 0} />
+              <KpiCard label="Convers." value={(metricas?.conversiones || metricas?.conversions) ?? 0} />
+              <KpiCard label="Ingresos" value={metricas?.ingresos ?? 0} isCurrency />
               {!isManager && (
                 <>
+                  <KpiCard label="ROI" value={metricas?.roi ?? 0} />
+                  <KpiCard label="ROAS" value={metricas?.roas ?? 0} />
                   <KpiCard label="CPC" value={metricas?.cpc ?? 0} isCurrency />
-                  <KpiCard label="ROI" value={metricas?.roi ?? 0} isCurrency />
+                  <KpiCard label="CPA" value={metricas?.cpa ?? 0} isCurrency />
                 </>
               )}
             </View>
@@ -371,22 +414,28 @@ export default function DashboardScreen() {
             <View style={[styles.chartCard, { backgroundColor: themeColors.bgCard }]}>
               <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Clics por Día</Text>
               {hasChart ? (
-                <LineChart
+                <BarChart
                   data={{ labels: chartLabels, datasets: [{ data: chartValues }] }}
-                  width={width - 80}
+                  width={width - 48}
                   height={220}
+                  yAxisLabel=""
+                  yAxisSuffix=""
                   chartConfig={{
                     backgroundColor: themeColors.bgCard,
                     backgroundGradientFrom: themeColors.bgCard,
                     backgroundGradientTo: themeColors.bgCard,
-                    decimalPlaces: 0, // Solo números enteros para clics
+                    decimalPlaces: 0,
                     color: (opacity = 1) => isDark ? `rgba(173, 141, 242, ${opacity})` : `rgba(95, 27, 242, ${opacity})`,
                     labelColor: (opacity = 1) => themeColors.textSecondary,
-                    propsForDots: { r: '5', strokeWidth: '2', stroke: themeColors.primary },
+                    barPercentage: 0.6,
+                    propsForBackgroundLines: {
+                      strokeDasharray: "", // solid background lines
+                      stroke: isDark ? "#334155" : "#F1F5F9",
+                    },
                   }}
                   fromZero={true}
-                  bezier={chartValues.length > 2} // Solo usar curvas si hay suficientes puntos
-                  style={{ borderRadius: 16, marginTop: 10 }}
+                  showValuesOnTopOfBars={true}
+                  style={{ borderRadius: 16, marginTop: 15, marginLeft: -16 }}
                 />
               ) : (
                 <Text style={[styles.noDataText, { color: themeColors.textMuted }]}>No hay datos suficientes para la gráfica.</Text>
@@ -426,7 +475,9 @@ export default function DashboardScreen() {
                           <Text style={[styles.tableCellSub, { color: themeColors.textMuted }]}>{timeStr}</Text>
                         </View>
                         <View style={{ flex: 1.5 }}>
-                          <Text style={[styles.tableCell, { color: themeColors.textSecondary }]} numberOfLines={1}>{click.pais || 'Desconocido'}</Text>
+                          <Text style={[styles.tableCell, { color: themeColors.textSecondary }]} numberOfLines={1}>
+                            {click.pais || click.country || 'Colombia'}
+                          </Text>
                           {click.utm_source && click.utm_source !== 'N/A' && (
                             <Text style={{ fontSize: 10, color: themeColors.primary, fontWeight: '700', textTransform: 'uppercase' }}>{click.utm_source}</Text>
                           )}
@@ -451,7 +502,19 @@ export default function DashboardScreen() {
                   )}
                 </View>
               ) : (
-                <Text style={[styles.noDataText, { color: themeColors.textMuted }]}>No hay registros de clics individuales aún.</Text>
+                <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                  <Text style={[styles.noDataText, { color: themeColors.textMuted }]}>
+                    {(metricas?.clics || metricas?.clicks) > 0 
+                      ? `No hay detalles disponibles para los ${(metricas?.clics || metricas?.clicks)} clics registrados.`
+                      : 'No hay registros de clics individuales aún.'}
+                  </Text>
+                  <TouchableOpacity 
+                    onPress={() => fetchStats(selectedCampaign!)}
+                    style={{ marginTop: 10 }}
+                  >
+                    <Text style={{ color: themeColors.primary, fontWeight: '600' }}>Actualizar tabla</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
           </>

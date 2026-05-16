@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import * as Service from '../services/api/conversion';
 
 export function useConversions() {
@@ -13,7 +14,7 @@ export function useConversions() {
             const response: any = await Service.getAll();
             setConversions(response.response || []);
         } catch (err: any) {
-            console.error('Error fetching conversions:', err);
+            Alert.alert("Error", "No se pudieron cargar las conversiones.");
             setError(err.message || 'Error al cargar conversiones');
             setConversions([]);
         } finally {
