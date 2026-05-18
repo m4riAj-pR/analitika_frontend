@@ -179,7 +179,7 @@ export default function AdminRoles() {
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: themeColors.bgCard }]}>
-            <Text style={[styles.modalTitle, { color: themeColors.primary }]}>Gestionar Acceso</Text>
+            <Text style={[styles.modalTitle, { color: themeColors.primary }]}>Gestionar acceso</Text>
             <Text style={[styles.modalSubtitle, { color: themeColors.textSecondary }]}>Selecciona el nuevo nivel de permisos para {selectedUser?.email}</Text>
 
             {updating ? (

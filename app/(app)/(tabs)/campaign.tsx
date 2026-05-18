@@ -16,8 +16,10 @@ import * as Clipboard from 'expo-clipboard';
 import { colors, spacing, typography, shadows } from '@/src/theme/colors';
 import { useTheme } from '@/src/ThemeContext';
 import AccountAvatar from '@/src/components/AccountAvatar';
+import { useProfile } from '@/src/hooks/useProfile';
 import { useCampaigns } from '@/src/hooks/useCampaigns';
 import { trackingLinksApi } from '@/src/services/api/tracking';
+import { campaignsApi } from '@/src/services/api/campaign';
 import { Campaign } from '@/src/services/api/types';
 
 // ─── Empty State (Replicated from Dashboard) ──────────────────────────────────
@@ -49,6 +51,7 @@ function EmptyState() {
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function CampaignScreen() {
     const { campaigns, loading, reload } = useCampaigns();
+    const { profile } = useProfile();
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const { colors: themeColors, isDark } = useTheme();
@@ -131,16 +134,55 @@ export default function CampaignScreen() {
         }
     };
 
+    const handleDelete = (camp: Campaign) => {
+        if (!camp.id_campaign) return;
+        Alert.alert(
+            'Eliminar campaña',
+            `¿Estás seguro de que deseas eliminar "${camp.name}"? Esta acción no se puede deshacer.`,
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Eliminar',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await campaignsApi.remove(camp.id_campaign!);
+                            reload();
+                        } catch (err: any) {
+                            Alert.alert('Error', err.message || 'No se pudo eliminar la campaña.');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
     const renderActiveCard = (camp: Campaign) => {
         const campId = camp.id_campaign;
         if (!campId) return null;
 
         return (
             <View key={`active-card-${campId}`} style={[styles.activeCard, { backgroundColor: isDark ? '#1E293B' : '#E9E4F5' }]}>
-                <TouchableOpacity onPress={() => router.push({ pathname: '/(app)/create', params: { id: String(campId) } })}>
-                    <Text style={[styles.activeCardTitle, { color: themeColors.textPrimary }]}>{camp.name}</Text>
-                </TouchableOpacity>
-                
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={[styles.activeCardTitle, { color: themeColors.textPrimary, marginBottom: 0, flex: 1 }]} numberOfLines={2}>{camp.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <TouchableOpacity
+                            style={[styles.iconBtn, { backgroundColor: isDark ? '#334155' : '#FFF' }]}
+                            onPress={() => router.push({ pathname: '/(app)/create', params: { id: String(campId) } })}
+                        >
+                            <Ionicons name="create-outline" size={20} color={themeColors.primary} />
+                        </TouchableOpacity>
+                        {profile?.id_role === 1 && (
+                            <TouchableOpacity
+                                style={[styles.iconBtn, { backgroundColor: isDark ? '#334155' : '#FFF' }]}
+                                onPress={() => handleDelete(camp)}
+                            >
+                                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+
                 {/* Botón Copiar Estilo Mockup (Cápsula Blanca) */}
                 <TouchableOpacity style={[styles.copyCapsule, { backgroundColor: isDark ? '#334155' : '#FFF' }]} onPress={() => copyLink(campId)}>
                     <Ionicons name="copy" size={20} color={themeColors.primary} />
@@ -160,9 +202,20 @@ export default function CampaignScreen() {
             {/* ── HEADER ── */}
             <View style={styles.header}>
                 <Text style={[styles.headerTitle, { color: themeColors.primary }]}>Campañas</Text>
-                <TouchableOpacity onPress={() => router.push('/account')}>
-                    <AccountAvatar size={42} />
-                </TouchableOpacity>
+                
+                <View style={styles.headerActions}>
+                    {(profile?.id_role === 2 || profile?.id_role === 3) && (
+                        <TouchableOpacity 
+                            style={[styles.addButton, { backgroundColor: themeColors.primary }]}
+                            onPress={() => router.push('/(app)/create')}
+                        >
+                            <Ionicons name="add" size={24} color="#FFF" />
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity onPress={() => router.push('/account')}>
+                        <AccountAvatar size={42} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {loading ? (
@@ -195,9 +248,17 @@ export default function CampaignScreen() {
                                             >
                                                 <Ionicons name="eye-outline" size={24} color={themeColors.primary} />
                                             </TouchableOpacity>
-                                            <TouchableOpacity onPress={() => router.push({ pathname: '/(app)/create', params: { id: String(camp.id_campaign) } })}>
+                                            <TouchableOpacity
+                                                style={{ marginRight: 15 }}
+                                                onPress={() => router.push({ pathname: '/(app)/create', params: { id: String(camp.id_campaign) } })}
+                                            >
                                                 <Ionicons name="create-outline" size={24} color={themeColors.textSecondary} />
                                             </TouchableOpacity>
+                                            {profile?.id_role === 1 && (
+                                                <TouchableOpacity onPress={() => handleDelete(camp)}>
+                                                    <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                                                </TouchableOpacity>
+                                            )}
                                         </View>
                                     </View>
                                 ))}
@@ -225,6 +286,28 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: '700',
         color: colors.primary,
+        flex: 1,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    addButton: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...shadows.card,
+    },
+    iconBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...shadows.card,
     },
     scrollContent: { paddingHorizontal: 24 },
 

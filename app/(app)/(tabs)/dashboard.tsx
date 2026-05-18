@@ -103,7 +103,7 @@ function CampaignCard({ campaign, onSelect, index, isOwner }: { campaign: Campai
         <Text style={[styles.cardName, { color: themeColors.textPrimary }, isInactive && { color: themeColors.textMuted }]}>{campaign.name}</Text>
         {isOwner && creatorName && (
           <Text style={{ fontSize: 12, color: themeColors.primary, fontWeight: '600', marginBottom: 4 }}>
-            👤 {creatorName}
+            {creatorName}
           </Text>
         )}
         <View style={[styles.statusBadgeInline, isInactive ? (isDark ? { backgroundColor: '#334155' } : styles.statusBadgeInactive) : styles.statusBadgeActive]}>
@@ -248,9 +248,11 @@ export default function DashboardScreen() {
 
       const [resMet, resClicsDia, resTabla] = results;
 
+      let metData = null;
       if (resMet.status === 'fulfilled') {
         const met = resMet.value;
-        setMetricas(met?.response || met?.data || met);
+        metData = met?.response || met?.data || met;
+        setMetricas(metData);
       } else {
         console.log("Error loading metrics:", resMet.reason);
         setMetricas(null);
@@ -273,19 +275,36 @@ export default function DashboardScreen() {
       }
 
       // FALLBACK SI FALLA O ESTÁ VACÍO: Si no hay datos o la petición falló, pero sabemos que hay clics
-      if (data.length === 0 && (metricas?.clics || metricas?.clicks || 0) > 0) {
+      if (data.length === 0 && (metData?.clics || metData?.clicks || 0) > 0) {
         try {
-          const { clicksApi } = await import('../../../src/services/api/clicks');
+          const { clicksApi, trackingLinksApi } = await import('../../../src/services/api');
+          
+          // Fallback 1: Endpoint general de clics con filtro local por campaña
           const fallbackRes: any = await clicksApi.getAll();
           const allClicks = Array.isArray(fallbackRes) ? fallbackRes : (fallbackRes?.response || fallbackRes?.data || []);
           
-          // Filtrar localmente por campaña
-          data = allClicks.filter((c: any) => 
+          let filtered = allClicks.filter((c: any) => 
             Number(c.id_campaign) === Number(campaign.id_campaign)
           );
-          console.log(`FALLBACK SUCCESS: Se encontraron ${data.length} clics en el endpoint general.`);
+
+          // Fallback 2: Si aún no hay, buscar por Tracking Links de la campaña
+          if (filtered.length === 0) {
+            console.log("Fallback 1 vacío, intentando Fallback 2 (por Tracking Links)...");
+            const linksRes: any = await trackingLinksApi.listByCampaign(Number(campaign.id_campaign));
+            const links = Array.isArray(linksRes) ? linksRes : (linksRes?.response || linksRes?.data || []);
+            
+            if (links.length > 0) {
+              const linkIds = links.map((l: any) => Number(l.id_link));
+              filtered = allClicks.filter((c: any) => linkIds.includes(Number(c.id_link)));
+            }
+          }
+
+          if (filtered.length > 0) {
+            data = filtered;
+            console.log(`FALLBACK SUCCESS: Se encontraron ${data.length} clics.`);
+          }
         } catch (err) {
-          console.log("Fallback clicks fetch failed:", err);
+          console.log("Detailed fallbacks failed:", err);
         }
       }
 
@@ -400,9 +419,9 @@ export default function DashboardScreen() {
             <View style={styles.kpiGrid}>
               <KpiCard label="Clics" value={(metricas?.clics || metricas?.clicks) ?? 0} />
               <KpiCard label="Convers." value={(metricas?.conversiones || metricas?.conversions) ?? 0} />
-              <KpiCard label="Ingresos" value={metricas?.ingresos ?? 0} isCurrency />
               {!isManager && (
                 <>
+                  <KpiCard label="Ingresos" value={metricas?.ingresos ?? 0} isCurrency />
                   <KpiCard label="ROI" value={metricas?.roi ?? 0} />
                   <KpiCard label="ROAS" value={metricas?.roas ?? 0} />
                   <KpiCard label="CPC" value={metricas?.cpc ?? 0} isCurrency />

@@ -9,6 +9,7 @@ import {
     KeyboardAvoidingView,
     Modal,
     Platform,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -106,10 +107,16 @@ export default function Login() {
 
         <KeyboardAvoidingView
             style={[styles.container, { backgroundColor: themeColors.bgPage }]}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
-            {/* ── HEADER – fondo blanco con diagramas de analítica ── */}
-            <View style={[styles.header, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
+            <ScrollView 
+                contentContainerStyle={{ flexGrow: 1 }} 
+                bounces={false}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* ── HEADER – fondo blanco con diagramas de analítica ── */}
+                <View style={[styles.header, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
                 {/* Diagrama tipo Torta (Pie Chart) - Superior Izquierda */}
                 <View style={styles.blobTopLeft}>
                     <Svg height="160" width="160" viewBox="0 0 100 100">
@@ -178,7 +185,7 @@ export default function Login() {
 
             {/* ── BOTTOM SHEET – formulario ── */}
             <View style={[styles.sheet, { backgroundColor: themeColors.bgAccent }]}>
-                <Text style={[styles.title, { color: themeColors.primary }]}>Inicio de Sesion</Text>
+                <Text style={[styles.title, { color: themeColors.primary }]}>Inicio de sesión</Text>
 
                 {/* Email */}
                 <View style={styles.inputGroup}>
@@ -247,7 +254,7 @@ export default function Login() {
                         {loading ? (
                             <ActivityIndicator color={themeColors.textOnPrimary} />
                         ) : (
-                            <Text style={styles.loginButtonText}>Iniciar Sesion</Text>
+                            <Text style={styles.loginButtonText}>Iniciar sesión</Text>
                         )}
                     </LinearGradient>
                 </TouchableOpacity>
@@ -272,7 +279,7 @@ export default function Login() {
                 <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
                     <Text style={[styles.footerText, { color: themeColors.textBody }]}>
                         ¿No tienes cuenta ?{" "}
-                        <Text style={[styles.footerLink, { color: themeColors.primary }]}>Registrate Gratis</Text>
+                        <Text style={[styles.footerLink, { color: themeColors.primary }]}>Regístrate gratis</Text>
                     </Text>
                 </TouchableOpacity>
 
@@ -280,9 +287,9 @@ export default function Login() {
                 <Modal visible={showRecoveryModal} transparent animationType="slide">
                     <View style={styles.modalOverlay}>
                         <View style={[styles.modalContent, { backgroundColor: themeColors.bgPage }]}>
-                            <Text style={[styles.modalTitle, { color: themeColors.primary }]}>Recuperar Contraseña</Text>
+                            <Text style={[styles.modalTitle, { color: themeColors.primary }]}>Recuperar contraseña</Text>
                             <Text style={[styles.modalSub, { color: themeColors.textSecondary }]}>
-                                Ingresa tu correo y te enviaremos los pasos para restablecer tu acceso.
+                                Ingresa tu correo y te enviaremos un código para restablecer tu acceso.
                             </Text>
                             <TextInput
                                 style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, width: '100%' }]}
@@ -307,7 +314,7 @@ export default function Login() {
                                     {recoveryLoading ? (
                                         <ActivityIndicator color="#fff" />
                                     ) : (
-                                        <Text style={[styles.loginButtonText, { fontSize: 15 }]}>Enviar código de recuperación</Text>
+                                        <Text style={[styles.loginButtonText, { fontSize: 15 }]}>Enviar código</Text>
                                     )}
                                 </LinearGradient>
                             </TouchableOpacity>
@@ -318,6 +325,7 @@ export default function Login() {
                     </View>
                 </Modal>
             </View>
+            </ScrollView>
         </KeyboardAvoidingView>
     );
 }
@@ -330,7 +338,7 @@ const styles = StyleSheet.create({
 
     /* ── HEADER ── */
     header: {
-        flex: 0.46,
+        height: 320,
         backgroundColor: colors.bgPage,
         justifyContent: "center",
         alignItems: "center",
@@ -389,7 +397,7 @@ const styles = StyleSheet.create({
 
     /* ── BOTTOM SHEET ── */
     sheet: {
-        flex: 0.54,
+        flex: 1,
         backgroundColor: colors.bgAccent,
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,

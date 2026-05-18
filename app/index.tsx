@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
-import { Animated, Image, StyleSheet, Text, View } from "react-native";
+import { Animated, Image, Platform, StyleSheet, Text, View } from "react-native";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, palette, typography } from "../src/theme/colors";
 import { useTheme } from "../src/ThemeContext";
@@ -86,17 +87,58 @@ export default function Index() {
           },
         ]}
       >
-        <View style={styles.topLeftShape}>
-          <View style={styles.topLeftShapeInner} />
+        {/* Diagrama tipo Torta (Pie Chart) - Superior Izquierda */}
+        <View style={styles.blobTopLeft}>
+          <Svg height="160" width="160" viewBox="0 0 100 100">
+            <Path d="M50,50 L50,0 A50,50 0 0,1 100,50 Z" fill={palette.purple1} opacity={0.15} />
+            <Path d="M50,50 L100,50 A50,50 0 0,1 50,100 Z" fill={palette.purple2} opacity={0.1} />
+            <Path d="M50,50 L50,100 A50,50 0 0,1 0,50 Z" fill={palette.purple3} opacity={0.08} />
+          </Svg>
         </View>
 
-        <View style={styles.middleRightShape} />
-
-        <View style={styles.bottomLeftShape}>
-          <View style={styles.bottomLeftShapeInner} />
+        {/* Diagrama tipo Dona (Donut Chart) - Superior Derecha */}
+        <View style={styles.blobTopRight}>
+          <Svg height="120" width="120" viewBox="0 0 100 100">
+            <Circle cx="50" cy="50" r="40" stroke={palette.purple2} strokeWidth="15" fill="none" opacity={0.12} strokeDasharray="180 100" />
+            <Circle cx="50" cy="50" r="40" stroke={palette.purple1} strokeWidth="15" fill="none" opacity={0.15} strokeDasharray="80 200" />
+          </Svg>
         </View>
 
-        <View style={styles.bottomRightShape} />
+        {/* Diagrama de Barras Estilizado - Lateral Izquierdo */}
+        <View style={styles.blobMidLeft}>
+          <Svg height="70" width="70" viewBox="0 0 100 100">
+            <Rect x="10" y="50" width="15" height="40" rx="5" fill={palette.purple1} opacity={0.1} />
+            <Rect x="35" y="30" width="15" height="60" rx="5" fill={palette.purple2} opacity={0.12} />
+            <Rect x="60" y="10" width="15" height="80" rx="5" fill={palette.purple3} opacity={0.15} />
+          </Svg>
+        </View>
+
+        {/* Diagrama de Líneas (Trend Chart) - Lateral Derecho */}
+        <View style={styles.blobMidRight}>
+          <Svg height="80" width="100" viewBox="0 0 100 100">
+            <Path 
+              d="M10,80 Q30,20 50,50 T90,10" 
+              fill="none" 
+              stroke={palette.purple1} 
+              strokeWidth="5" 
+              opacity={0.15} 
+            />
+            <Circle cx="10" cy="80" r="4" fill={palette.purple1} opacity={0.2} />
+            <Circle cx="50" cy="50" r="4" fill={palette.purple1} opacity={0.2} />
+            <Circle cx="90" cy="10" r="4" fill={palette.purple1} opacity={0.2} />
+          </Svg>
+        </View>
+
+        {/* Puntos de Datos Dispersos - Superior Centro */}
+        <View style={styles.blobTopCenter}>
+          <Svg height="60" width="100" viewBox="0 0 100 60">
+            <Circle cx="20" cy="20" r="3" fill={palette.purple2} opacity={0.1} />
+            <Circle cx="50" cy="10" r="4" fill={palette.purple1} opacity={0.15} />
+            <Circle cx="80" cy="30" r="3" fill={palette.purple3} opacity={0.1} />
+            <Circle cx="40" cy="40" r="5" fill={palette.purple2} opacity={0.08} />
+            <Circle cx="70" cy="50" r="3" fill={palette.purple1} opacity={0.12} />
+          </Svg>
+        </View>
 
         <View style={styles.textContainer}>
           <Text style={[styles.title, { color: themeColors.textPrimary }]}>Bienvenid@ a{"\n"}Analitika!</Text>
@@ -122,7 +164,7 @@ export default function Index() {
       >
         <Image
           source={require("../assets/images/icon_negative.png")}
-          style={{ width: 300, height: 300 }}
+          style={{ width: 325, height: 325 }}
           resizeMode="contain"
         />
       </Animated.View>
@@ -157,68 +199,42 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontWeight: "400",
   },
-  /* Top Left Shape */
-  topLeftShape: {
+  /* Diagramas decorativos */
+  blobTopLeft: {
     position: "absolute",
-    top: -50,
-    left: 30,
+    top: -45,
+    left: -35,
     width: 160,
     height: 160,
-    borderRadius: 80,
-    backgroundColor: colors.bgBlob,
-    overflow: "hidden",
-    zIndex: 1,
   },
-  topLeftShapeInner: {
+  blobTopRight: {
     position: "absolute",
-    top: -30,
-    left: "40%",
-    width: 160,
-    height: 160,
-    backgroundColor: palette.purple3,
-    transform: [{ rotate: "15deg" }],
-  },
-  /* Middle Right Shape */
-  middleRightShape: {
-    position: "absolute",
-    top: "38%",
-    right: 20,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: colors.bgBlob,
-    zIndex: 0,
-  },
-  /* Bottom Left Shape */
-  bottomLeftShape: {
-    position: "absolute",
-    bottom: 180,
-    left: -40,
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    backgroundColor: colors.bgBlob,
-    overflow: "hidden",
-    zIndex: 1,
-  },
-  bottomLeftShapeInner: {
-    position: "absolute",
-    bottom: "40%",
-    right: -20,
-    width: 130,
-    height: 130,
-    backgroundColor: palette.purple3,
-    transform: [{ rotate: "25deg" }],
-  },
-  /* Bottom Right Shape */
-  bottomRightShape: {
-    position: "absolute",
-    bottom: -30,
-    right: 40,
+    top: -15,
+    right: -30,
     width: 120,
     height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.bgBlob,
-    zIndex: 1,
+  },
+  blobMidLeft: {
+    position: "absolute",
+    bottom: 40,
+    left: 5,
+    width: 70,
+    height: 70,
+    transform: [{ rotate: "-15deg" }],
+  },
+  blobMidRight: {
+    position: "absolute",
+    bottom: 60,
+    right: -10,
+    width: 100,
+    height: 80,
+    transform: [{ rotate: "10deg" }],
+  },
+  blobTopCenter: {
+    position: "absolute",
+    top: 20,
+    alignSelf: "center",
+    width: 100,
+    height: 60,
   },
 });

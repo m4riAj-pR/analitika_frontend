@@ -181,7 +181,7 @@ export default function Register() {
                     bounces={false}
                 >
                     <View style={styles.sheetHeader}>
-                        <Text style={[styles.title, { color: themeColors.textPrimary }]}>Crea tu Cuenta</Text>
+                        <Text style={[styles.title, { color: themeColors.textPrimary }]}>Crea tu cuenta</Text>
                     </View>
 
                     <View style={styles.form}>
@@ -327,7 +327,7 @@ export default function Register() {
                         <View style={styles.footer}>
                             <Text style={[styles.footerText, { color: themeColors.textSecondary }]}>¿Ya tienes una cuenta? </Text>
                             <TouchableOpacity onPress={() => router.replace("/(auth)/login")} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                                <Text style={[styles.footerLink, { color: themeColors.primary }]}>Inicia Sesión</Text>
+                                <Text style={[styles.footerLink, { color: themeColors.primary }]}>Inicia sesión</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

@@ -256,7 +256,7 @@ export default function CreateCampaignScreen() {
     // Si sigue sin haber ID y es Super Admin (rol 1), intentar obtener la primera empresa del sistema
     if (!companyId && profile?.id_role === 1) {
       try {
-        const { companiesApi } = await import('../services/api/companies');
+        const { companiesApi } = await import('../../src/services/api/companies');
         const companies: any = await companiesApi.getCompanies();
         const list = Array.isArray(companies) ? companies : (companies?.response || []);
         if (list.length > 0) {
@@ -418,21 +418,7 @@ export default function CreateCampaignScreen() {
           {name.trim() ? name : `Nombre de la\ncampaña`}
         </Text>
 
-        <TouchableOpacity
-          style={[styles.headerActionBtn, { backgroundColor: themeColors.primary }]}
-          activeOpacity={0.8}
-          onPress={handleCreate}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <View style={styles.headerPlusIcon}>
-              <View style={[styles.plusVerticalHeader, { backgroundColor: '#fff' }]} />
-              <View style={[styles.plusHorizontalHeader, { backgroundColor: '#fff' }]} />
-            </View>
-          )}
-        </TouchableOpacity>
+
 
         <TouchableOpacity
           style={[styles.avatarBtn, { backgroundColor: themeColors.bgCard }]}
@@ -720,37 +706,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
-  },
-  headerActionBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  headerPlusIcon: {
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  plusVerticalHeader: {
-    width: 3,
-    height: 16,
-    borderRadius: 1.5,
-    position: 'absolute',
-  },
-  plusHorizontalHeader: {
-    width: 16,
-    height: 3,
-    borderRadius: 1.5,
-    position: 'absolute',
   },
 
   /* Form */

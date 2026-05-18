@@ -49,6 +49,14 @@ export default function AccountScreen() {
     password: '',
   });
 
+  // Cambio de contraseña
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
+
   useEffect(() => {
     if (profile) {
       setFormData({
@@ -130,6 +138,38 @@ export default function AccountScreen() {
         }
       }
     ]);
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordForm.newPassword || !passwordForm.confirmPassword) {
+      Alert.alert('Error', 'Todos los campos son obligatorios');
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      await usersApi.updateUser(profile.id_user, {
+        password_hash: passwordForm.newPassword, // El backend hace el hash
+        id_person: profile.id_person,
+        id_role: profile.id_role,
+        username: profile.email.split('@')[0],
+      });
+      Alert.alert('Éxito', 'Contraseña actualizada correctamente');
+      setShowPasswordModal(false);
+      setPasswordForm({ newPassword: '', confirmPassword: '' });
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'No se pudo actualizar la contraseña');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const handleLogout = () => {
@@ -280,7 +320,7 @@ export default function AccountScreen() {
           </View>
         ) : (
           <View style={styles.infoContainer}>
-            <Text style={[styles.userName, { color: themeColors.textPrimary }]}>{fullName}</Text>
+            <Text style={[styles.userName, { color: themeColors.textPrimary }]} numberOfLines={2}>{fullName}</Text>
             <View style={[styles.badgeContainer, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
               <Text style={[styles.badgeText, { color: themeColors.textSecondary }]}>
                 {profile?.role_name || (profile?.id_role === 1 ? 'Super Admin' : profile?.id_role === 2 ? 'Owner' : profile?.id_role === 3 ? 'Management' : 'Usuario')}
@@ -293,9 +333,9 @@ export default function AccountScreen() {
               <View style={[styles.infoIconBox, { backgroundColor: isDark ? '#1E293B' : '#EDE9FE' }]}>
                 <Ionicons name="mail" size={20} color={themeColors.primary} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={[styles.infoLabel, { color: themeColors.textSecondary }]}>Correo Electrónico</Text>
-                <Text style={[styles.infoValue, { color: themeColors.textPrimary }]}>{profile?.email || 'ejemplo@correo.com'}</Text>
+                <Text style={[styles.infoValue, { color: themeColors.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">{profile?.email || 'ejemplo@correo.com'}</Text>
               </View>
             </View>
 
@@ -303,9 +343,9 @@ export default function AccountScreen() {
               <View style={[styles.infoIconBox, { backgroundColor: isDark ? '#1E293B' : '#EDE9FE' }]}>
                 <Ionicons name="call" size={20} color={themeColors.primary} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={[styles.infoLabel, { color: themeColors.textSecondary }]}>Teléfono</Text>
-                <Text style={[styles.infoValue, { color: themeColors.textPrimary }]}>{profile?.phone || 'No registrado'}</Text>
+                <Text style={[styles.infoValue, { color: themeColors.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">{profile?.phone || 'No registrado'}</Text>
               </View>
             </View>
 
@@ -313,9 +353,9 @@ export default function AccountScreen() {
               <View style={[styles.infoIconBox, { backgroundColor: isDark ? '#1E293B' : '#EDE9FE' }]}>
                 <Ionicons name="business" size={20} color={themeColors.primary} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={[styles.infoLabel, { color: themeColors.textSecondary }]}>Empresa</Text>
-                <Text style={[styles.infoValue, { color: themeColors.textPrimary }]}>
+                <Text style={[styles.infoValue, { color: themeColors.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">
                   {profile?.company_name || 'Empresa no encontrada'}
                 </Text>
               </View>
@@ -323,6 +363,25 @@ export default function AccountScreen() {
           </View>
         )}
       </View>
+
+      {/* SECCIÓN SEGURIDAD */}
+      {!isEditing && (
+        <View style={[styles.managementSection, { backgroundColor: themeColors.bgCard }]}>
+          <View style={styles.managementHeader}>
+            <View>
+              <Text style={[styles.sectionTitle, { color: themeColors.primary }]}>Seguridad</Text>
+              <Text style={[styles.sectionSubtitle, { color: themeColors.textSecondary }]}>Actualiza tu acceso</Text>
+            </View>
+            <TouchableOpacity 
+              style={[styles.editBtn, { backgroundColor: isDark ? '#1E293B' : '#EDE9FE' }]} 
+              onPress={() => setShowPasswordModal(true)}
+            >
+              <Ionicons name="lock-closed" size={16} color={themeColors.primary} />
+              <Text style={[styles.editBtnText, { color: themeColors.primary }]}>Cambiar Clave</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* SECCIÓN CONFIGURACIÓN (NUEVA - MODO OSCURO) */}
       <View style={[styles.managementSection, { backgroundColor: themeColors.bgCard }]}>
@@ -470,6 +529,60 @@ export default function AccountScreen() {
                 )}
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+
+
+      {/* MODAL CAMBIO DE CONTRASEÑA */}
+      <Modal visible={showPasswordModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: themeColors.bgCard }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: themeColors.primary }]}>Cambiar contraseña</Text>
+              <TouchableOpacity onPress={() => setShowPasswordModal(false)}>
+                <Ionicons name="close" size={24} color={themeColors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalForm}>
+              <View style={styles.modalInputGroup}>
+                <Text style={[styles.modalLabel, { color: themeColors.textSecondary }]}>Nueva Contraseña</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
+                  value={passwordForm.newPassword}
+                  onChangeText={(t) => setPasswordForm({...passwordForm, newPassword: t})}
+                  placeholder="Mínimo 6 caracteres"
+                  secureTextEntry
+                  placeholderTextColor={themeColors.textMuted}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={[styles.modalLabel, { color: themeColors.textSecondary }]}>Confirmar Contraseña</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
+                  value={passwordForm.confirmPassword}
+                  onChangeText={(t) => setPasswordForm({...passwordForm, confirmPassword: t})}
+                  placeholder="Repite la contraseña"
+                  secureTextEntry
+                  placeholderTextColor={themeColors.textMuted}
+                />
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.modalSubmitBtn, { backgroundColor: themeColors.primary }, changingPassword && { opacity: 0.7 }]}
+                onPress={handleChangePassword}
+                disabled={changingPassword}
+              >
+                {changingPassword ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalSubmitText}>Actualizar Contraseña</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
