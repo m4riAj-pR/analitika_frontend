@@ -7,6 +7,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,6 +27,15 @@ import { colors, shadows } from '../../../src/theme/colors';
 import { useTheme } from '../../../src/ThemeContext';
 
 const { width } = Dimensions.get('window');
+const KPI_CARD_WIDTH = (width - 48 - 15) / 2;
+
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Activa',
+  draft: 'Borrador',
+  paused: 'Pausada',
+  finished: 'Finalizada',
+};
+const statusLabel = (s: string) => STATUS_LABEL[String(s).toLowerCase()] ?? String(s);
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('es-CO', {
@@ -108,7 +118,7 @@ function CampaignCard({ campaign, onSelect, index, isOwner }: { campaign: Campai
         )}
         <View style={[styles.statusBadgeInline, isInactive ? (isDark ? { backgroundColor: '#334155' } : styles.statusBadgeInactive) : styles.statusBadgeActive]}>
           <Text style={[styles.statusBadgeTextInline, { color: isDark ? '#94A3B8' : '#475569' }]}>
-            {String(campaign.status).toUpperCase()}
+            {statusLabel(campaign.status)}
           </Text>
         </View>
       </View>
@@ -174,6 +184,7 @@ export default function DashboardScreen() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [loadingStats, setLoadingStats] = useState(false);
   const [metricas, setMetricas] = useState<any>(null);
@@ -218,6 +229,12 @@ export default function DashboardScreen() {
       .then((res: any) => setUnreadCount(res.count || 0))
       .catch(() => setUnreadCount(0));
   }, [campaignId]);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadData();
+    setTimeout(() => setRefreshing(false), 900);
+  }, [loadData]);
 
   useEffect(() => {
     loadData();
@@ -341,6 +358,14 @@ export default function DashboardScreen() {
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
         <Header unreadCount={unreadCount} />
 
+        {/* Título de sección */}
+        <View style={styles.listHeaderSection}>
+          <Text style={[styles.listTitle, { color: themeColors.textPrimary }]}>Mis Campañas</Text>
+          <Text style={[styles.listSubtitle, { color: themeColors.textSecondary }]}>
+            Selecciona una campaña para ver sus estadísticas
+          </Text>
+        </View>
+
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <View style={[styles.searchWrapper, { backgroundColor: themeColors.bgCard }]}>
@@ -377,6 +402,9 @@ export default function DashboardScreen() {
             contentContainerStyle={[styles.listScrollContent, { paddingBottom: insets.bottom + 100 }]}
             showsVerticalScrollIndicator={false}
             ItemSeparatorComponent={() => <View style={{ height: 20 }} />}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[themeColors.primary]} tintColor={themeColors.primary} />
+            }
           />
         )}
       </View>
@@ -401,11 +429,17 @@ export default function DashboardScreen() {
         <View style={{ width: 26 }} />
       </View>
 
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[themeColors.primary]} tintColor={themeColors.primary} />
+        }
+      >
         <View style={[styles.campaignBanner, { backgroundColor: isDark ? '#1E293B' : '#F3F0FA', padding: 16, borderRadius: 20 }]}>
           <Text style={[styles.campaignBannerText, { color: themeColors.textPrimary }]}>{selectedCampaign?.name}</Text>
           <View style={[styles.statusBadge, selectedCampaign?.status === 'active' ? styles.statusBadgeActive : (isDark ? { backgroundColor: '#334155' } : null)]}>
-            <Text style={[styles.statusBadgeText, { color: isDark ? '#F1F5F9' : '#000' }]}>{selectedCampaign?.status === 'active' ? 'Activa' : 'Inactiva'}</Text>
+            <Text style={[styles.statusBadgeText, { color: isDark ? '#F1F5F9' : '#000' }]}>{statusLabel(selectedCampaign?.status ?? '')}</Text>
           </View>
         </View>
 
@@ -593,12 +627,20 @@ const styles = StyleSheet.create({
   },
   profileButton: { padding: 4, justifyContent: 'center' },
 
+  listHeaderSection: {
+    paddingHorizontal: 24,
+    paddingBottom: 12,
+  },
   listTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: colors.primary,
-    paddingHorizontal: 30,
-    marginBottom: 20,
+    marginBottom: 4,
+  },
+  listSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: '400',
   },
   listScrollContent: { paddingHorizontal: 24 },
 
@@ -668,7 +710,7 @@ const styles = StyleSheet.create({
   statusBadgeActive: { backgroundColor: '#D1FAE5' },
   statusBadgeText: { fontSize: 12, fontWeight: '600' },
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 15, justifyContent: 'space-between', marginBottom: 20 },
-  kpiCard: { width: '47%', backgroundColor: '#F3F0FA', padding: 16, borderRadius: 20 },
+  kpiCard: { width: KPI_CARD_WIDTH, backgroundColor: '#F3F0FA', padding: 16, borderRadius: 20 },
   kpiLabel: { fontSize: 14, color: '#666', marginBottom: 4 },
   kpiValue: { fontSize: 24, fontWeight: '700', color: colors.primary },
   kpiValueCurrency: { fontSize: 18, fontWeight: '700', color: colors.primary },

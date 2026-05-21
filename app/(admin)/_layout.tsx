@@ -1,5 +1,5 @@
 import { Tabs, Redirect } from 'expo-router';
-import { useProfile } from '../../src/hooks/useProfile';
+import { useAuthGuard } from '../../src/hooks/useAuthGuard';
 import { ActivityIndicator } from 'react-native';
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
@@ -78,9 +78,9 @@ function AdminTabBar({ state, descriptors, navigation }: any) {
 }
 
 export default function AdminLayout() {
-  const { profile, loading } = useProfile();
+  const { isValidating, isAuthorized, profile } = useAuthGuard();
 
-  if (loading) {
+  if (isValidating) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -88,8 +88,8 @@ export default function AdminLayout() {
     );
   }
 
-  // Si no hay perfil o no es Super Admin (1), redirigir
-  if (!profile || profile.id_role !== 1) {
+  // Token inválido, sin sesión, o no es Super Admin (rol 1) → login
+  if (!isAuthorized || !profile || profile.id_role !== 1) {
     return <Redirect href="/(auth)/login" />;
   }
 

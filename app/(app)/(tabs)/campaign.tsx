@@ -7,11 +7,14 @@ import {
     ScrollView,
     ActivityIndicator,
     Alert,
+    RefreshControl,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import { Swipeable } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
 
 import { colors, spacing, typography, shadows } from '@/src/theme/colors';
 import { useTheme } from '@/src/ThemeContext';
@@ -21,6 +24,7 @@ import { useCampaigns } from '@/src/hooks/useCampaigns';
 import { trackingLinksApi } from '@/src/services/api/tracking';
 import { campaignsApi } from '@/src/services/api/campaign';
 import { Campaign } from '@/src/services/api/types';
+
 
 // ─── Empty State (Replicated from Dashboard) ──────────────────────────────────
 function EmptyState() {
@@ -56,6 +60,11 @@ export default function CampaignScreen() {
     const router = useRouter();
     const { colors: themeColors, isDark } = useTheme();
     const [linksMap, setLinksMap] = React.useState<Record<number, string>>({});
+    const [refreshing, setRefreshing] = React.useState(false);
+    const [toast, setToast] = React.useState('');
+
+    const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500); };
+    const onRefresh = React.useCallback(async () => { setRefreshing(true); reload(); setTimeout(() => setRefreshing(false), 900); }, [reload]);
 
     // Recargar siempre que la pantalla gane foco
     useFocusEffect(
@@ -147,6 +156,8 @@ export default function CampaignScreen() {
                     onPress: async () => {
                         try {
                             await campaignsApi.remove(camp.id_campaign!);
+                            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            showToast(`«${camp.name}» eliminada`);
                             reload();
                         } catch (err: any) {
                             Alert.alert('Error', err.message || 'No se pudo eliminar la campaña.');
@@ -156,6 +167,13 @@ export default function CampaignScreen() {
             ]
         );
     };
+
+    const renderSwipeDelete = (camp: Campaign) => (
+        <TouchableOpacity style={styles.swipeDeleteBtn} onPress={() => handleDelete(camp)} activeOpacity={0.8}>
+            <Ionicons name="trash-outline" size={22} color="#fff" />
+            <Text style={styles.swipeDeleteText}>Eliminar</Text>
+        </TouchableOpacity>
+    );
 
     const renderActiveCard = (camp: Campaign) => {
         const campId = camp.id_campaign;
@@ -172,7 +190,7 @@ export default function CampaignScreen() {
                         >
                             <Ionicons name="create-outline" size={20} color={themeColors.primary} />
                         </TouchableOpacity>
-                        {profile?.id_role === 1 && (
+                        {profile?.id_role === 2 && (
                             <TouchableOpacity
                                 style={[styles.iconBtn, { backgroundColor: isDark ? '#334155' : '#FFF' }]}
                                 onPress={() => handleDelete(camp)}
@@ -204,7 +222,7 @@ export default function CampaignScreen() {
                 <Text style={[styles.headerTitle, { color: themeColors.primary }]}>Campañas</Text>
                 
                 <View style={styles.headerActions}>
-                    {(profile?.id_role === 2 || profile?.id_role === 3) && (
+                    {(profile?.id_role === 1 || profile?.id_role === 2 || profile?.id_role === 3) && (
                         <TouchableOpacity 
                             style={[styles.addButton, { backgroundColor: themeColors.primary }]}
                             onPress={() => router.push('/(app)/create')}
@@ -223,7 +241,12 @@ export default function CampaignScreen() {
                     <ActivityIndicator size="large" color={themeColors.primary} />
                 </View>
             ) : (
-                <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}>
+                <ScrollView
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[themeColors.primary]} tintColor={themeColors.primary} />
+                    }
+                    contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+                >
                     
                     {campaigns.length === 0 ? (
                         <EmptyState />
@@ -238,30 +261,29 @@ export default function CampaignScreen() {
                             {/* Sección Campañas Inactivas (Estilo Mockup) */}
                             <View style={[styles.inactiveSection, { backgroundColor: isDark ? '#1E293B' : '#E9E4F5' }]}>
                                 <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Campañas Inactivas</Text>
-                                {inactiveCampaigns.map((camp) => (
-                                    <View key={`inactive-${camp.id_campaign}`} style={[styles.listItem, { backgroundColor: isDark ? '#334155' : '#F3F0FA' }]}>
-                                        <Text style={[styles.listText, { color: themeColors.textPrimary }]} numberOfLines={1}>{camp.name}</Text>
-                                        <View style={styles.listActions}>
-                                            <TouchableOpacity 
-                                                style={{ marginRight: 15 }}
-                                                onPress={() => router.push({ pathname: '/(app)/(tabs)/dashboard', params: { campaignId: String(camp.id_campaign) } })}
-                                            >
-                                                <Ionicons name="eye-outline" size={24} color={themeColors.primary} />
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={{ marginRight: 15 }}
-                                                onPress={() => router.push({ pathname: '/(app)/create', params: { id: String(camp.id_campaign) } })}
-                                            >
-                                                <Ionicons name="create-outline" size={24} color={themeColors.textSecondary} />
-                                            </TouchableOpacity>
-                                            {profile?.id_role === 1 && (
-                                                <TouchableOpacity onPress={() => handleDelete(camp)}>
-                                                    <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                                {inactiveCampaigns.map((camp) => {
+                                    const isOwner = profile?.id_role === 2;
+                                    const inner = (
+                                        <View style={[styles.listItem, { backgroundColor: isDark ? '#334155' : '#F3F0FA' }]}>
+                                            <Text style={[styles.listText, { color: themeColors.textPrimary }]} numberOfLines={1}>{camp.name}</Text>
+                                            <View style={styles.listActions}>
+                                                <TouchableOpacity style={{ marginRight: 15 }} onPress={() => router.push({ pathname: '/(app)/(tabs)/dashboard', params: { campaignId: String(camp.id_campaign) } })}>
+                                                    <Ionicons name="eye-outline" size={24} color={themeColors.primary} />
                                                 </TouchableOpacity>
-                                            )}
+                                                <TouchableOpacity onPress={() => router.push({ pathname: '/(app)/create', params: { id: String(camp.id_campaign) } })}>
+                                                    <Ionicons name="create-outline" size={24} color={themeColors.textSecondary} />
+                                                </TouchableOpacity>
+                                            </View>
                                         </View>
-                                    </View>
-                                ))}
+                                    );
+                                    return isOwner ? (
+                                        <Swipeable key={`inactive-${camp.id_campaign}`} renderRightActions={() => renderSwipeDelete(camp)} overshootRight={false}>
+                                            {inner}
+                                        </Swipeable>
+                                    ) : (
+                                        <View key={`inactive-${camp.id_campaign}`}>{inner}</View>
+                                    );
+                                })}
                                 {inactiveCampaigns.length === 0 && <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>No hay campañas inactivas</Text>}
                             </View>
                         </>
@@ -269,6 +291,11 @@ export default function CampaignScreen() {
 
                 </ScrollView>
             )}
+        {toast !== '' && (
+            <View style={styles.toast} pointerEvents="none">
+                <Text style={styles.toastText}>{toast}</Text>
+            </View>
+        )}
         </View>
     );
 }
@@ -396,6 +423,34 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         textAlign: 'center',
     },
+    swipeDeleteBtn: {
+        backgroundColor: '#EF4444',
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: 88,
+        borderRadius: 18,
+        marginBottom: 12,
+        marginLeft: 8,
+        gap: 4,
+    },
+    swipeDeleteText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+    toast: {
+        position: 'absolute',
+        bottom: 110,
+        left: 24,
+        right: 24,
+        backgroundColor: '#1E293B',
+        borderRadius: 14,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+        zIndex: 999,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    toastText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });
 
 const emptyStyles = StyleSheet.create({

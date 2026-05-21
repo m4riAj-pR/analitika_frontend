@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import {
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -44,7 +45,7 @@ const podiumStyles = StyleSheet.create({
 });
 
 // ─── Ranking card ─────────────────────────────────────────────────────────────
-function RankingCard({ item, rank, isManager }: { item: TopCampaign; rank: number; isManager: boolean }) {
+function RankingCard({ item, rank, isManager, onPress }: { item: TopCampaign; rank: number; isManager: boolean; onPress: () => void }) {
   const { colors: themeColors, isDark } = useTheme();
   const isTop = rank === 1;
   const accent = isTop ? themeColors.primary : 'transparent';
@@ -53,7 +54,9 @@ function RankingCard({ item, rank, isManager }: { item: TopCampaign; rank: numbe
     n == null ? '—' : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 
   return (
-    <View style={[styles.card, { backgroundColor: themeColors.primary }, isTop && { borderColor: isDark ? themeColors.textSecondary : palette.purple3 }]}>
+    <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={[
+      styles.card, { backgroundColor: themeColors.primary }, isTop && { borderColor: isDark ? themeColors.textSecondary : palette.purple3 }
+    ]}>
       {/* rank badge */}
       <View style={[styles.rankBadge, isTop && styles.rankBadgeTop]}>
         {isTop
@@ -81,7 +84,7 @@ function RankingCard({ item, rank, isManager }: { item: TopCampaign; rank: numbe
           </Text>
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -167,6 +170,12 @@ export default function RankingScreen() {
   }, []);
 
   const { campaigns, loading, error, reload } = useCampaignsTop(start_date, end_date);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    reload();
+    setTimeout(() => setRefreshing(false), 900);
+  }, [reload]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
@@ -197,6 +206,14 @@ export default function RankingScreen() {
         <ScrollView
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[themeColors.primary]}
+              tintColor={themeColors.primary}
+            />
+          }
         >
           {/* legend */}
           <View style={styles.legendRow}>
@@ -212,7 +229,13 @@ export default function RankingScreen() {
           {/* list */}
           <View style={styles.list}>
             {campaigns.map((item, index) => (
-              <RankingCard key={item.id_campaign} item={item} rank={index + 1} isManager={isManager} />
+              <RankingCard
+                key={item.id_campaign}
+                item={item}
+                rank={index + 1}
+                isManager={isManager}
+                onPress={() => router.push({ pathname: '/(app)/(tabs)/dashboard', params: { campaignId: String(item.id_campaign) } } as any)}
+              />
             ))}
           </View>
         </ScrollView>

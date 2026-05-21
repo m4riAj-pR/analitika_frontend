@@ -1,12 +1,12 @@
 import { Stack, Redirect } from 'expo-router';
-import { useProfile } from '../../src/hooks/useProfile';
+import { useAuthGuard } from '../../src/hooks/useAuthGuard';
 import { ActivityIndicator, View } from 'react-native';
 import { colors } from '../../src/theme/colors';
 
 export default function AppLayout() {
-  const { profile, loading } = useProfile();
+  const { isValidating, isAuthorized, profile } = useAuthGuard();
 
-  if (loading) {
+  if (isValidating) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -14,12 +14,12 @@ export default function AppLayout() {
     );
   }
 
-  // Si no hay perfil o es un Super Admin (que debería estar en /(admin)), redirigir
-  // Permitir roles 2 (Owner) y 3 (Management)
-  if (!profile) {
+  // Token inválido o sin sesión → login
+  if (!isAuthorized || !profile) {
     return <Redirect href="/(auth)/login" />;
   }
 
+  // Super Admin → redirigir al panel de administración
   if (profile.id_role === 1) {
     return <Redirect href="/(admin)/companies" />;
   }
