@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { ThemeProvider, useTheme } from "../src/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 function RootStack() {
     const { isDark } = useTheme();
@@ -14,8 +15,10 @@ function RootStack() {
 
 export default function Layout() {
     return (
-        <ThemeProvider>
-            <RootStack />
-        </ThemeProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <ThemeProvider>
+                <RootStack />
+            </ThemeProvider>
+        </GestureHandlerRootView>
     );
 }
