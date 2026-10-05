@@ -5,7 +5,7 @@
 // - Distingue errores de red (no cierra sesión) de 401 (sí cierra sesión).
 
 import { useCallback, useEffect, useState } from 'react';
-import { getToken, getUser, removeToken, request } from '../services/api/client';
+import { getToken, getUser, request } from '../services/api/client';
 import type { ApiError, User } from '../services/api/types';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
