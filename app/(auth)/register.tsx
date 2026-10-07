@@ -36,8 +36,7 @@ export default function Register() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const { colors: themeColors, isDark } = useTheme();
-    const [nombres, setNombres] = useState("");
-    const [apellidos, setApellidos] = useState("");
+    const [nombre, setNombre] = useState("");
     const [empresa, setEmpresa] = useState("");
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
@@ -49,16 +48,12 @@ export default function Register() {
 
     const handleRegister = async () => {
         console.log("CLICK REGISTER");
-        console.log("FORM DATA", { nombres, apellidos, email, phone, password });
+        console.log("FORM DATA", { nombre, email, phone, password });
         console.log("AUTH API", authApi);
         console.log("AUTH REGISTER FN", authApi?.register);
 
-        if (!nombres.trim()) {
-            Alert.alert("Campo requerido", "Por favor ingresa tus Nombres.");
-            return;
-        }
-        if (!apellidos.trim()) {
-            Alert.alert("Campo requerido", "Por favor ingresa tus Apellidos.");
+        if (!nombre.trim()) {
+            Alert.alert("Campo requerido", "Por favor ingresa tu Nombre completo.");
             return;
         }
         if (!phone.trim()) {
@@ -100,8 +95,8 @@ export default function Register() {
         try {
             setLoading(true);
             const res = await authApi.register({
-                first_name: nombres,
-                last_name: apellidos,
+                name: nombre.trim(),
+                first_name: nombre.trim(),
                 email: email.trim(),
                 phone: phone.trim(),
                 company: empresa.trim(),
@@ -185,28 +180,15 @@ export default function Register() {
                     </View>
 
                     <View style={styles.form}>
-                        {/* Nombres */}
+                        {/* Nombre completo */}
                         <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: themeColors.textSecondary }]}>Nombres</Text>
+                            <Text style={[styles.label, { color: themeColors.textSecondary }]}>Nombre completo</Text>
                             <TextInput
                                 style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
-                                placeholder="Tus nombres"
+                                placeholder="Tu nombre completo"
                                 placeholderTextColor={themeColors.textMuted}
-                                value={nombres}
-                                onChangeText={setNombres}
-                                autoCapitalize="words"
-                            />
-                        </View>
-
-                        {/* Apellidos */}
-                        <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: themeColors.textSecondary }]}>Apellidos</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
-                                placeholder="Tus apellidos"
-                                placeholderTextColor={themeColors.textMuted}
-                                value={apellidos}
-                                onChangeText={setApellidos}
+                                value={nombre}
+                                onChangeText={setNombre}
                                 autoCapitalize="words"
                             />
                         </View>

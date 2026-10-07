@@ -62,8 +62,9 @@ export interface User {
   id_role: number;
   id_company: number;
   email: string;
-  first_name: string;
-  last_name: string;
+  first_name?: string;
+  last_name?: string;
+  name?: string;
   phone: string;
   is_active: boolean;
 }

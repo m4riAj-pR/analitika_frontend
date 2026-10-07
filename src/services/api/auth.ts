@@ -33,8 +33,9 @@ export const registerUser = async (data: any) => {
     body: JSON.stringify({
       email:      data.email.trim(),
       password:   data.password,
-      first_name: data.first_name || "",
-      last_name:  data.last_name  || "",
+      first_name: data.first_name || data.name || "",
+      name:       data.name || data.first_name || "",
+      ...(data.last_name ? { last_name: data.last_name } : {}),
       phone:      data.phone      || "",
       company:    data.company    || "",
     }),

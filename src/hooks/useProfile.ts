@@ -67,12 +67,15 @@ export function useProfile() {
             if (!profile?.id_person) throw new Error("No hay sesión activa");
 
             // CORRECCIÓN 5: campos correctos para el schema Person del backend
-            await authService.updateProfile(profile.id_person, {
-                name:     data.first_name || data.name,
-                lastname: data.last_name  || data.lastname,
-                email:    data.email || profile.email,
-                phone:    data.phone,
-            });
+            const payload: any = {
+                name:  data.name || data.first_name,
+                email: data.email || profile.email,
+                phone: data.phone,
+            };
+            if (data.lastname || data.last_name) {
+                payload.lastname = data.lastname || data.last_name;
+            }
+            await authService.updateProfile(profile.id_person, payload);
 
             // Actualizar caché local
             const updatedUser = {
