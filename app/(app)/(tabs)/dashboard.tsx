@@ -7,6 +7,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -22,8 +23,9 @@ import { useProfile } from '../../../src/hooks/useProfile';
 import { campaignsApi } from '../../../src/services/api/campaign';
 import { notificationsApi } from '../../../src/services/api/notifications';
 import { getClicsPorDia, getMetricas, getTablaClic } from '../../../src/services/api/stats';
+import { adConnectionsApi } from '../../../src/services/api/adConnections';
 import type { Campaign } from '../../../src/services/api/types';
-import { colors, shadows } from '../../../src/theme/colors';
+import { colors, palette, radii, shadows, spacing, typography } from '../../../src/theme/colors';
 import { useTheme } from '../../../src/ThemeContext';
 
 const { width } = Dimensions.get('window');
@@ -160,13 +162,32 @@ function EmptyState() {
 }
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, isCurrency = false }: { label: string; value: number; isCurrency?: boolean }) {
+function KpiCard({
+  label,
+  value,
+  isCurrency = false,
+  displayValue,
+  onInfoPress,
+}: {
+  label: string;
+  value?: number;
+  isCurrency?: boolean;
+  displayValue?: string;
+  onInfoPress?: () => void;
+}) {
   const { colors: themeColors, isDark } = useTheme();
   return (
     <View style={[styles.kpiCard, { backgroundColor: isDark ? '#1E293B' : '#F3F0FA' }]}>
-      <Text style={[styles.kpiLabel, { color: themeColors.textSecondary }]}>{label}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <Text style={[styles.kpiLabel, { color: themeColors.textSecondary, marginBottom: 0 }]}>{label}</Text>
+        {onInfoPress && (
+          <TouchableOpacity onPress={onInfoPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="information-circle-outline" size={17} color={themeColors.primary} />
+          </TouchableOpacity>
+        )}
+      </View>
       <Text style={[isCurrency ? styles.kpiValueCurrency : styles.kpiValue, { color: themeColors.primary }]} numberOfLines={1}>
-        {isCurrency ? formatCurrency(value) : value}
+        {displayValue != null ? displayValue : (isCurrency ? formatCurrency(value ?? 0) : (value ?? 0))}
       </Text>
     </View>
   );
@@ -188,6 +209,8 @@ export default function DashboardScreen() {
 
   const [loadingStats, setLoadingStats] = useState(false);
   const [metricas, setMetricas] = useState<any>(null);
+  const [campaignMapping, setCampaignMapping] = useState<any>(null);
+  const [showCtrModal, setShowCtrModal] = useState(false);
   const [clicsPorDia, setClicsPorDia] = useState<any[]>([]);
   const [tablaClics, setTablaClics] = useState<any[]>([]);
   const [statsError, setStatsError] = useState(false);
@@ -256,14 +279,15 @@ export default function DashboardScreen() {
     setStatsError(false);
 
     try {
-      // Usamos Promise.allSettled para que si falla uno (ej. la tabla de clics), los KPIs sigan cargando
+      // Usamos Promise.allSettled para que si falla uno, los demás sigan cargando
       const results = await Promise.allSettled([
         getMetricas(campaign.id_campaign),
         getClicsPorDia(campaign.id_campaign),
         getTablaClic(campaign.id_campaign),
+        adConnectionsApi.getMapping(campaign.id_campaign),
       ]);
 
-      const [resMet, resClicsDia, resTabla] = results;
+      const [resMet, resClicsDia, resTabla, resMapping] = results;
 
       let metData = null;
       if (resMet.status === 'fulfilled') {
@@ -273,6 +297,12 @@ export default function DashboardScreen() {
       } else {
         console.log("Error loading metrics:", resMet.reason);
         setMetricas(null);
+      }
+
+      if (resMapping.status === 'fulfilled') {
+        setCampaignMapping(resMapping.value);
+      } else {
+        setCampaignMapping(null);
       }
 
       if (resClicsDia.status === 'fulfilled') {
@@ -437,11 +467,43 @@ export default function DashboardScreen() {
         }
       >
         <View style={[styles.campaignBanner, { backgroundColor: isDark ? '#1E293B' : '#F3F0FA', padding: 16, borderRadius: 20 }]}>
-          <Text style={[styles.campaignBannerText, { color: themeColors.textPrimary }]}>{selectedCampaign?.name}</Text>
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <Text style={[styles.campaignBannerText, { color: themeColors.textPrimary }]}>{selectedCampaign?.name}</Text>
+            
+            {/* Indicador de Origen del Dato: Sincronizado vs Manual */}
+            <View style={styles.originBadgeRow}>
+              {(metricas?.data_source?.startsWith('api_') || campaignMapping?.external_campaign_id) ? (
+                <View style={[styles.originBadge, { backgroundColor: isDark ? '#1E1B4B' : '#EDE9FE', borderColor: palette.purple4 }]}>
+                  <Ionicons name="cloud-done-outline" size={13} color={palette.purple4} style={{ marginRight: 4 }} />
+                  <Text style={[styles.originBadgeText, { color: palette.purple4 }]}>
+                    Sincronizado con Meta Ads
+                  </Text>
+                </View>
+              ) : (
+                <View style={[styles.originBadge, { backgroundColor: isDark ? '#334155' : '#F1F5F9', borderColor: themeColors.borderDivider }]}>
+                  <Ionicons name="create-outline" size={13} color={themeColors.textMuted} style={{ marginRight: 4 }} />
+                  <Text style={[styles.originBadgeText, { color: themeColors.textMuted }]}>
+                    Gasto manual
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
           <View style={[styles.statusBadge, selectedCampaign?.status === 'active' ? styles.statusBadgeActive : (isDark ? { backgroundColor: '#334155' } : null)]}>
             <Text style={[styles.statusBadgeText, { color: isDark ? '#F1F5F9' : '#000' }]}>{statusLabel(selectedCampaign?.status ?? '')}</Text>
           </View>
         </View>
+
+        {/* Banner de Advertencia si la sincronización falló */}
+        {campaignMapping?.sync_enabled && (metricas?.data_source === 'manual' || campaignMapping?.status === 'error') && (
+          <View style={[styles.warningBanner, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7', borderColor: themeColors.warning }]}>
+            <Ionicons name="warning-outline" size={18} color={themeColors.warning} style={{ marginRight: 8, marginTop: 2 }} />
+            <Text style={[styles.warningBannerText, { color: isDark ? '#FDE68A' : '#92400E' }]}>
+              No se pudo sincronizar. Mostrando último dato disponible o valor manual.
+            </Text>
+          </View>
+        )}
 
         {loadingStats ? (
           <View style={{ marginTop: 60, alignItems: 'center' }}>
@@ -453,8 +515,18 @@ export default function DashboardScreen() {
             <View style={styles.kpiGrid}>
               <KpiCard label="Clics" value={(metricas?.clics || metricas?.clicks) ?? 0} />
               <KpiCard label="Convers." value={(metricas?.conversiones || metricas?.conversions) ?? 0} />
+              <KpiCard
+                label="CTR"
+                displayValue={
+                  metricas?.impressions != null && metricas.impressions > 0
+                    ? `${Number(metricas.ctr_real ?? 0).toFixed(2)}%`
+                    : 'No disponible'
+                }
+                onInfoPress={() => setShowCtrModal(true)}
+              />
               {!isManager && (
                 <>
+                  <KpiCard label="Gasto" value={metricas?.spent ?? (selectedCampaign?.spent ? Number(selectedCampaign.spent) : 0)} isCurrency />
                   <KpiCard label="Ingresos" value={metricas?.ingresos ?? 0} isCurrency />
                   <KpiCard label="ROI" value={metricas?.roi ?? 0} />
                   <KpiCard label="ROAS" value={metricas?.roas ?? 0} />
@@ -573,6 +645,43 @@ export default function DashboardScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* ── MODAL EXPLICATIVO DEL CTR ── */}
+      <Modal
+        visible={showCtrModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCtrModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCtrModal(false)}
+        >
+          <View style={[styles.ctrModalContent, { backgroundColor: themeColors.bgCard }]}>
+            <View style={styles.ctrModalHeader}>
+              <View style={[styles.ctrIconCircle, { backgroundColor: isDark ? '#1E1B4B' : '#EDE9FE' }]}>
+                <Ionicons name="pie-chart-outline" size={26} color={themeColors.primary} />
+              </View>
+              <Text style={[styles.ctrModalTitle, { color: themeColors.textPrimary }]}>Tasa de Clics (CTR)</Text>
+            </View>
+
+            <Text style={[styles.ctrModalText, { color: themeColors.textSecondary }]}>
+              Este porcentaje compara cuántas veces se mostró tu anuncio con cuántas personas llegaron realmente a tu página.
+              {'\n\n'}
+              Puede haber una pequeña diferencia porque algunas personas cierran la app antes de cargar la página.
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.ctrModalCloseBtn, { backgroundColor: themeColors.primary }]}
+              onPress={() => setShowCtrModal(false)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.ctrModalCloseBtnText}>Entendido</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -739,6 +848,87 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: '#475569',
+  },
+
+  /* Badges de Origen y Advertencia */
+  originBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  originBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radii.pill,
+  },
+  originBadgeText: {
+    fontSize: 11,
+    fontWeight: typography.bold,
+  },
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  warningBannerText: {
+    flex: 1,
+    fontSize: typography.sizeSm,
+    lineHeight: 18,
+    fontWeight: typography.medium,
+  },
+
+  /* Modal CTR */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  ctrModalContent: {
+    width: '100%',
+    borderRadius: radii.xl,
+    padding: spacing.xl,
+    ...shadows.card,
+  },
+  ctrModalHeader: {
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  ctrIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  ctrModalTitle: {
+    fontSize: typography.sizeXl,
+    fontWeight: typography.bold,
+    textAlign: 'center',
+  },
+  ctrModalText: {
+    fontSize: typography.sizeSm,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  ctrModalCloseBtn: {
+    paddingVertical: 14,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+  },
+  ctrModalCloseBtnText: {
+    color: '#fff',
+    fontSize: typography.sizeMd,
+    fontWeight: typography.bold,
   },
 });
 

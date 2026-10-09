@@ -17,7 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useProfile } from '../../src/hooks/useProfile';
 import { authApi } from '../../src/services/api/auth';
-import { usersApi, personsApi } from '../../src/services/api';
+import { usersApi } from '../../src/services/api';
 import { removeToken } from '../../src/services/api/client';
 import { colors, palette, radii, shadows, spacing, typography } from '../../src/theme/colors';
 import AccountAvatar from '../../src/components/AccountAvatar';
@@ -29,24 +29,13 @@ export default function AccountScreen() {
   const { theme, toggleTheme, colors: themeColors, isDark } = useTheme();
 
   const { profile, loading, saving, updateProfile } = useProfile();
+  const isOwner = profile?.id_role === 1 || profile?.id_role === 2;
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
     phone: '',
-  });
-
-  // Gestión de empleados (solo para Owners)
-  const [isManagementEnabled, setIsManagementEnabled] = useState(false);
-  const [managers, setManagers] = useState<any[]>([]);
-  const [loadingManagers, setLoadingManagers] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newManager, setNewManager] = useState({
-    name: '',
-    lastname: '',
-    email: '',
-    password: '',
   });
 
   // Cambio de contraseña
@@ -64,81 +53,8 @@ export default function AccountScreen() {
         last_name: profile.last_name || '',
         phone: profile.phone || '',
       });
-
-      if (profile.id_role === 2) {
-        fetchManagers();
-      }
     }
   }, [profile]);
-
-  const fetchManagers = async () => {
-    try {
-      setLoadingManagers(true);
-      const allUsers: any = await usersApi.getUsers();
-      // Filtrar solo los managers (rol 3) de la misma empresa
-      const filtered = allUsers.filter((u: any) => u.id_role === 3);
-      setManagers(filtered);
-    } catch (err) {
-      Alert.alert("Error", "No se pudieron cargar los empleados.");
-    } finally {
-      setLoadingManagers(false);
-    }
-  };
-
-  const handleAddManager = async () => {
-    if (!newManager.name || !newManager.email || !newManager.password) {
-      Alert.alert('Campos requeridos', 'Por favor completa los campos obligatorios.');
-      return;
-    }
-
-    try {
-      setLoadingManagers(true);
-      // 1. Crear persona
-      const personRes: any = await personsApi.createPerson({
-        name: newManager.name.trim(),
-        lastname: newManager.lastname.trim(),
-        email: newManager.email.trim(),
-        phone: '',
-      });
-
-      if (personRes && personRes.id_person) {
-        // 2. Crear usuario con rol 3 (Management)
-        await usersApi.createUser({
-          id_person: personRes.id_person,
-          id_role: 3,
-          id_company: profile.id_company,
-          password_hash: newManager.password, // El backend hace el hash
-        });
-
-        Alert.alert('Éxito', 'Manager registrado correctamente.');
-        setShowAddModal(false);
-        setNewManager({ name: '', lastname: '', email: '', password: '' });
-        fetchManagers();
-      }
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo registrar al manager.');
-    } finally {
-      setLoadingManagers(false);
-    }
-  };
-
-  const handleDeleteManager = (id_user: number) => {
-    Alert.alert('Eliminar Manager', '¿Estás seguro de que quieres eliminar a este empleado?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { 
-        text: 'Eliminar', 
-        style: 'destructive', 
-        onPress: async () => {
-          try {
-            await usersApi.deleteUser(id_user);
-            fetchManagers();
-          } catch (err) {
-            Alert.alert('Error', 'No se pudo eliminar al usuario.');
-          }
-        }
-      }
-    ]);
-  };
 
   const handleChangePassword = async () => {
     if (!passwordForm.newPassword || !passwordForm.confirmPassword) {
@@ -157,7 +73,7 @@ export default function AccountScreen() {
     try {
       setChangingPassword(true);
       await usersApi.updateUser(profile.id_user, {
-        password_hash: passwordForm.newPassword, // El backend hace el hash
+        password_hash: passwordForm.newPassword,
         id_person: profile.id_person,
         id_role: profile.id_role,
         username: profile.email.split('@')[0],
@@ -398,142 +314,6 @@ export default function AccountScreen() {
           />
         </View>
       </View>
-
-      {/* SECCIÓN GESTIÓN DE EMPLEADOS (Solo para Owners) */}
-      {profile?.id_role === 2 && (
-        <View style={[styles.managementSection, { backgroundColor: themeColors.bgCard }]}>
-          <View style={styles.managementHeader}>
-            <View>
-              <Text style={[styles.sectionTitle, { color: themeColors.primary }]}>Gestión de Empleados</Text>
-              <Text style={[styles.sectionSubtitle, { color: themeColors.textSecondary }]}>Permitir añadir managements</Text>
-            </View>
-            <Switch
-              value={isManagementEnabled}
-              onValueChange={setIsManagementEnabled}
-              trackColor={{ false: '#CBD5E1', true: themeColors.primary }}
-              thumbColor={Platform.OS === 'ios' ? '#fff' : isManagementEnabled ? '#fff' : '#f4f3f4'}
-            />
-          </View>
-
-          {isManagementEnabled && (
-            <View style={[styles.managementList, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
-              <View style={styles.listHeader}>
-                <Text style={[styles.listTitle, { color: themeColors.textPrimary }]}>Managements ({managers.length})</Text>
-                <TouchableOpacity 
-                  style={[styles.addBtn, { backgroundColor: themeColors.primary }]}
-                  onPress={() => setShowAddModal(true)}
-                >
-                  <Ionicons name="add" size={20} color="#fff" />
-                  <Text style={styles.addBtnText}>Añadir</Text>
-                </TouchableOpacity>
-              </View>
-
-              {loadingManagers ? (
-                <ActivityIndicator color={themeColors.primary} style={{ marginVertical: 20 }} />
-              ) : managers.length === 0 ? (
-                <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No hay managers registrados aún.</Text>
-              ) : (
-                managers.map((m) => (
-                  <View key={m.id_user} style={[styles.managerItem, { backgroundColor: isDark ? '#334155' : '#F8FAFC' }]}>
-                    <View style={[styles.managerAvatar, { backgroundColor: isDark ? '#475569' : '#DDD6FE' }]}>
-                      <Text style={[styles.managerAvatarText, { color: themeColors.primary }]}>
-                        {(m.name?.[0] || 'M').toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={styles.managerInfo}>
-                      <Text style={[styles.managerName, { color: themeColors.textPrimary }]}>{m.name || 'Manager'}</Text>
-                      <Text style={[styles.managerEmail, { color: themeColors.textSecondary }]}>{m.email}</Text>
-                    </View>
-                    <TouchableOpacity 
-                      onPress={() => handleDeleteManager(m.id_user)}
-                      style={styles.deleteBtn}
-                    >
-                      <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                ))
-              )}
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* MODAL PARA AÑADIR MANAGER */}
-      <Modal visible={showAddModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: themeColors.bgCard }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: themeColors.primary }]}>Nuevo Management</Text>
-              <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                <Ionicons name="close" size={24} color={themeColors.textPrimary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalForm} showsVerticalScrollIndicator={false}>
-              <View style={styles.modalInputGroup}>
-                <Text style={[styles.modalLabel, { color: themeColors.textSecondary }]}>Nombre</Text>
-                <TextInput
-                  style={[styles.modalInput, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
-                  value={newManager.name}
-                  onChangeText={(t) => setNewManager({...newManager, name: t})}
-                  placeholder="Nombre del empleado"
-                  placeholderTextColor={themeColors.textMuted}
-                />
-              </View>
-
-              <View style={styles.modalInputGroup}>
-                <Text style={[styles.modalLabel, { color: themeColors.textSecondary }]}>Apellido</Text>
-                <TextInput
-                  style={[styles.modalInput, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
-                  value={newManager.lastname}
-                  onChangeText={(t) => setNewManager({...newManager, lastname: t})}
-                  placeholder="Apellido"
-                  placeholderTextColor={themeColors.textMuted}
-                />
-              </View>
-
-              <View style={styles.modalInputGroup}>
-                <Text style={[styles.modalLabel, { color: themeColors.textSecondary }]}>Email</Text>
-                <TextInput
-                  style={[styles.modalInput, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
-                  value={newManager.email}
-                  onChangeText={(t) => setNewManager({...newManager, email: t})}
-                  placeholder="correo@ejemplo.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  placeholderTextColor={themeColors.textMuted}
-                />
-              </View>
-
-              <View style={styles.modalInputGroup}>
-                <Text style={[styles.modalLabel, { color: themeColors.textSecondary }]}>Contraseña Inicial</Text>
-                <TextInput
-                  style={[styles.modalInput, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
-                  value={newManager.password}
-                  onChangeText={(t) => setNewManager({...newManager, password: t})}
-                  placeholder="Mínimo 6 caracteres"
-                  secureTextEntry
-                  placeholderTextColor={themeColors.textMuted}
-                />
-              </View>
-
-              <TouchableOpacity 
-                style={[styles.modalSubmitBtn, { backgroundColor: themeColors.primary }, loadingManagers && { opacity: 0.7 }]}
-                onPress={handleAddManager}
-                disabled={loadingManagers}
-              >
-                {loadingManagers ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.modalSubmitText}>Registrar Empleado</Text>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-
 
       {/* MODAL CAMBIO DE CONTRASEÑA */}
       <Modal visible={showPasswordModal} animationType="slide" transparent>
@@ -979,5 +759,160 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: typography.bold,
+  },
+
+  /* CUENTAS PUBLICITARIAS */
+  connectMetaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.pill,
+  },
+  connectMetaBtnText: {
+    color: '#fff',
+    fontSize: typography.sizeSm,
+    fontWeight: typography.semibold,
+  },
+  adEmptyContainer: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.md,
+  },
+  adEmptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  adEmptyTitle: {
+    fontSize: typography.sizeMd,
+    fontWeight: typography.bold,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  adEmptySubtitle: {
+    fontSize: typography.sizeSm,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: spacing.lg,
+  },
+  adEmptyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.pill,
+    ...shadows.card,
+  },
+  adEmptyCtaText: {
+    color: '#fff',
+    fontSize: typography.sizeSm,
+    fontWeight: typography.bold,
+  },
+  adConnectionsList: {
+    borderTopWidth: 1,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    gap: spacing.md,
+  },
+  adConnectionCard: {
+    borderRadius: radii.lg,
+    padding: spacing.md,
+  },
+  adConnectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  providerBadge: {
+    paddingVertical: 3,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.sm,
+  },
+  providerBadgeText: {
+    fontSize: typography.sizeXs,
+    fontWeight: typography.bold,
+    letterSpacing: 0.5,
+  },
+  adStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 3,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.pill,
+  },
+  adStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 5,
+  },
+  adStatusText: {
+    fontSize: typography.sizeXs,
+    fontWeight: typography.bold,
+  },
+  adAccountName: {
+    fontSize: typography.sizeMd,
+    fontWeight: typography.bold,
+    marginTop: spacing.xs,
+  },
+  adAccountId: {
+    fontSize: typography.sizeXs,
+    marginTop: 2,
+    marginBottom: spacing.xs,
+  },
+  syncRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+  syncText: {
+    fontSize: typography.sizeXs,
+  },
+  syncErrorMessage: {
+    fontSize: typography.sizeXs,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  adCardActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    paddingTop: spacing.sm,
+  },
+  syncBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: radii.md,
+    paddingVertical: spacing.xs + 2,
+  },
+  syncBtnText: {
+    fontSize: typography.sizeSm,
+    fontWeight: typography.semibold,
+  },
+  disconnectBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FEF2F2',
+    borderRadius: radii.md,
+    paddingVertical: spacing.xs + 2,
+  },
+  disconnectBtnText: {
+    color: '#EF4444',
+    fontSize: typography.sizeSm,
+    fontWeight: typography.semibold,
   },
 });

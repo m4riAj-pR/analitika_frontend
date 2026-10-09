@@ -9,6 +9,7 @@ import {
     Platform,
     ScrollView,
     StyleSheet,
+    Switch,
     Text,
     TextInput,
     TouchableOpacity,
@@ -18,7 +19,8 @@ import * as Clipboard from 'expo-clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AccountAvatar from '../../src/components/AccountAvatar';
 import { useProfile } from '../../src/hooks/useProfile';
-import { campaignsApi, channelsApi, trackingLinksApi } from '../../src/services/api';
+import { useAdConnections } from '../../src/hooks/useAdConnections';
+import { campaignsApi, channelsApi, trackingLinksApi, adConnectionsApi } from '../../src/services/api';
 import { CAMPAIGN_STATUS } from '../../src/services/api/types';
 import {
     colors,
@@ -188,6 +190,47 @@ export default function CreateCampaignScreen() {
   const [sessionLoading, setSessionLoading] = useState(true);
   const [trackUrl, setTrackUrl] = useState<string | null>(null);
 
+  // Vinculación Meta Ads (Solo Owner y si el canal es Meta)
+  const isOwner = profile?.id_role === 1 || profile?.id_role === 2;
+  const [activeConnection, setActiveConnection] = useState<any>(null);
+  const [externalCampaigns, setExternalCampaigns] = useState<any[]>([]);
+  const [loadingExternalCampaigns, setLoadingExternalCampaigns] = useState(false);
+  const [selectedExternalId, setSelectedExternalId] = useState('');
+  const [selectedExternalName, setSelectedExternalName] = useState('');
+  const [syncEnabled, setSyncEnabled] = useState(true);
+  const [showExternalModal, setShowExternalModal] = useState(false);
+
+  // Comprobar conexiones activas para la empresa
+  useEffect(() => {
+    const checkConnections = async () => {
+      const compId = profile?.id_company || (profile?.companies?.[0]?.id_company);
+      if (!isOwner || !compId) return;
+      try {
+        const conns: any = await adConnectionsApi.getCompanyConnections(compId);
+        const list = Array.isArray(conns) ? conns : conns?.response || [];
+        const active = list.find((c: any) => c.status === 'active' && c.provider?.toLowerCase() === 'meta');
+        if (active) {
+          setActiveConnection(active);
+          setLoadingExternalCampaigns(true);
+          try {
+            const extCamps: any = await adConnectionsApi.getExternalCampaigns(compId, active.id_connection);
+            setExternalCampaigns(Array.isArray(extCamps) ? extCamps : extCamps?.response || []);
+          } catch (err) {
+            console.log('Error fetching Meta campaigns:', err);
+          } finally {
+            setLoadingExternalCampaigns(false);
+          }
+        } else {
+          setActiveConnection(null);
+          setExternalCampaigns([]);
+        }
+      } catch (err) {
+        console.log('Error checking ad connections:', err);
+      }
+    };
+    checkConnections();
+  }, [isOwner, profile?.id_company, profile?.companies]);
+
   useEffect(() => {
     const loadData = async () => {
       setSessionLoading(true);
@@ -228,6 +271,21 @@ export default function CreateCampaignScreen() {
           } catch (err) {
             console.log("No se pudo cargar el link trackeable", err);
           }
+
+          // Cargar mapeo externo si existe (para Owner)
+          if (isOwner) {
+            try {
+              const mapping: any = await adConnectionsApi.getMapping(campaignId);
+              if (mapping && mapping.external_campaign_id) {
+                setSelectedExternalId(mapping.external_campaign_id);
+                setSelectedExternalName(mapping.external_campaign_name || `ID: ${mapping.external_campaign_id}`);
+                setSyncEnabled(Boolean(mapping.sync_enabled));
+                setChannelName('Meta');
+              }
+            } catch (mappingErr) {
+              console.log("No external mapping or error:", mappingErr);
+            }
+          }
         } catch (err) {
           Alert.alert("Error", "No se pudo cargar la campaña.");
         } finally {
@@ -238,7 +296,7 @@ export default function CreateCampaignScreen() {
       setSessionLoading(false);
     };
     loadData();
-  }, [campaignId]);
+  }, [campaignId, isOwner]);
 
   const handleCreate = async () => {
     if (!name.trim()) {
@@ -379,6 +437,25 @@ export default function CreateCampaignScreen() {
         }
       }
 
+      // 5. Vincular campaña externa de Meta Ads (si aplica para Owner)
+      if (isOwner && channelName === 'Meta' && activeConnection && newCampaignId) {
+        try {
+          if (selectedExternalId) {
+            await adConnectionsApi.mapExternal(newCampaignId, {
+              id_connection: activeConnection.id_connection,
+              external_campaign_id: selectedExternalId,
+              external_campaign_name: selectedExternalName || undefined,
+            });
+            console.log("Campaña vinculada exitosamente a Meta Ads:", selectedExternalId);
+          } else if (campaignId) {
+            // Si el usuario desvinculó en edición
+            await adConnectionsApi.deleteMapping(campaignId);
+          }
+        } catch (mapErr) {
+          console.log("Error al mapear campaña externa:", mapErr);
+        }
+      }
+
       Alert.alert('¡Listo!', `Campaña ${campaignId ? 'actualizada' : 'creada'} exitosamente.`, [
         { text: 'OK', onPress: () => router.back() },
       ]);
@@ -447,42 +524,42 @@ export default function CreateCampaignScreen() {
         {/* Plantillas */}
         {!campaignId && (
           <View style={{ marginBottom: spacing.lg }}>
-            <Text style={[styles.fieldLabel, { color: themeColors.textSecondary, marginBottom: spacing.sm }]}>Selecciona una Plantilla</Text>
+            <Text style={[styles.fieldLabel, { color: themeColors.textSecondary, marginBottom: spacing.sm }]}>Plantilla de Estrategia Integrada</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md }}>
               <TouchableOpacity
                 style={[styles.templateBtn, { backgroundColor: themeColors.bgCard }]}
                 onPress={() => {
-                  setName(`Ventas - ${new Date().toLocaleString('default', { month: 'long' })}`);
-                  setDescription("Campaña optimizada para maximizar conversiones y ventas directas.");
+                  setName(`Campaña 360° - ${new Date().toLocaleString('default', { month: 'short' })}`);
+                  setDescription("Estrategia unificada integrando Posts en Feed, Reels de IG/FB y TikToks.");
                   setChannelName("Meta");
                 }}
               >
-                <Ionicons name="cart-outline" size={20} color={themeColors.primary} />
-                <Text style={[styles.templateBtnText, { color: themeColors.textPrimary }]}>Ventas</Text>
+                <Ionicons name="planet-outline" size={20} color={themeColors.primary} />
+                <Text style={[styles.templateBtnText, { color: themeColors.textPrimary }]}>360° (Posts + Reels + TikToks)</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.templateBtn, { backgroundColor: themeColors.bgCard }]}
                 onPress={() => {
-                  setName(`Leads - ${new Date().toLocaleString('default', { month: 'long' })}`);
-                  setDescription("Enfoque en captación de prospectos y generación de base de datos.");
-                  setChannelName("Google");
-                }}
-              >
-                <Ionicons name="person-add-outline" size={20} color={themeColors.primary} />
-                <Text style={[styles.templateBtnText, { color: themeColors.textPrimary }]}>Leads</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.templateBtn, { backgroundColor: themeColors.bgCard }]}
-                onPress={() => {
-                  setName(`Tráfico - ${new Date().toLocaleString('default', { month: 'long' })}`);
-                  setDescription("Aumento de visibilidad y visitas al sitio web o landing page.");
+                  setName(`Vídeo Viral - ${new Date().toLocaleString('default', { month: 'short' })}`);
+                  setDescription("Enfoque intensivo en contenido audiovisual de formato corto (Reels + TikToks).");
                   setChannelName("TikTok");
                 }}
               >
-                <Ionicons name="megaphone-outline" size={20} color={themeColors.primary} />
-                <Text style={[styles.templateBtnText, { color: themeColors.textPrimary }]}>Tráfico</Text>
+                <Ionicons name="videocam-outline" size={20} color={themeColors.primary} />
+                <Text style={[styles.templateBtnText, { color: themeColors.textPrimary }]}>Vídeo Short (Reels + TikToks)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.templateBtn, { backgroundColor: themeColors.bgCard }]}
+                onPress={() => {
+                  setName(`Social Feed - ${new Date().toLocaleString('default', { month: 'short' })}`);
+                  setDescription("Combinación estratégica de carruseles informativos y Reels de demostración.");
+                  setChannelName("Meta");
+                }}
+              >
+                <Ionicons name="images-outline" size={20} color={themeColors.primary} />
+                <Text style={[styles.templateBtnText, { color: themeColors.textPrimary }]}>Social Feed (Posts + Reels)</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -608,6 +685,137 @@ export default function CreateCampaignScreen() {
           onChangeText={setChannelDescription}
           multiline
         />
+
+        {/* ── VINCULACIÓN CON META ADS (Solo Owner si el canal es Meta y hay conexión activa) ── */}
+        {isOwner && channelName === 'Meta' && activeConnection && (
+          <View style={[styles.externalLinkCard, { backgroundColor: isDark ? '#1E293B' : '#F5F3FF', borderColor: themeColors.primary }]}>
+            <View style={styles.externalLinkHeader}>
+              <View style={[styles.providerBadgeMini, { backgroundColor: themeColors.primary }]}>
+                <Text style={styles.providerBadgeMiniText}>META ADS</Text>
+              </View>
+              <Text style={[styles.externalSectionTitle, { color: themeColors.primary }]}>
+                Vincular con campaña de Meta Ads
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.selectorRow, { backgroundColor: themeColors.bgCard, marginBottom: spacing.sm }]}
+              activeOpacity={0.7}
+              onPress={() => setShowExternalModal(true)}
+              disabled={loadingExternalCampaigns}
+            >
+              {loadingExternalCampaigns ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <ActivityIndicator size="small" color={themeColors.primary} />
+                  <Text style={{ color: themeColors.textSecondary, fontSize: typography.sizeSm }}>Cargando campañas de Meta...</Text>
+                </View>
+              ) : (
+                <Text
+                  style={[
+                    styles.selectorText,
+                    { color: themeColors.textPrimary },
+                    !selectedExternalId && { color: themeColors.textMuted },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {selectedExternalName || (selectedExternalId ? `ID: ${selectedExternalId}` : 'Seleccionar campaña de Meta Ads')}
+                </Text>
+              )}
+              <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
+            </TouchableOpacity>
+
+            {/* Modal selector de campaña externa */}
+            <Modal visible={showExternalModal} transparent animationType="fade">
+              <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => setShowExternalModal(false)}
+              >
+                <View style={[styles.modalContent, { backgroundColor: themeColors.bgPage, maxHeight: '75%' }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
+                    <Text style={[styles.modalTitle, { color: themeColors.primary, marginBottom: 0 }]}>Campañas en Meta Ads</Text>
+                    <TouchableOpacity onPress={() => setShowExternalModal(false)}>
+                      <Ionicons name="close" size={24} color={themeColors.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    <TouchableOpacity
+                      style={[styles.modalOption, !selectedExternalId && { backgroundColor: isDark ? '#334155' : '#EDE9FE' }]}
+                      onPress={() => {
+                        setSelectedExternalId('');
+                        setSelectedExternalName('');
+                        setShowExternalModal(false);
+                      }}
+                    >
+                      <Text style={[styles.modalOptionText, { color: themeColors.textPrimary, fontStyle: 'italic' }]}>
+                        (Sin vincular a Meta Ads)
+                      </Text>
+                    </TouchableOpacity>
+
+                    {externalCampaigns.length === 0 ? (
+                      <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                        <Text style={{ color: themeColors.textMuted, textAlign: 'center' }}>
+                          No se encontraron campañas en la cuenta conectada.
+                        </Text>
+                      </View>
+                    ) : (
+                      externalCampaigns.map((c) => (
+                        <TouchableOpacity
+                          key={c.id}
+                          style={[
+                            styles.modalOption,
+                            selectedExternalId === c.id && { backgroundColor: isDark ? '#334155' : '#EDE9FE' }
+                          ]}
+                          onPress={() => {
+                            setSelectedExternalId(c.id);
+                            setSelectedExternalName(c.name);
+                            setShowExternalModal(false);
+                          }}
+                        >
+                          <Text style={[
+                            styles.modalOptionText,
+                            { color: themeColors.textPrimary },
+                            selectedExternalId === c.id && { color: themeColors.primary, fontWeight: typography.bold }
+                          ]}>
+                            {c.name}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: themeColors.textMuted, textAlign: 'center', marginTop: 2 }}>
+                            ID: {c.id} {c.objective ? `• ${c.objective}` : ''}
+                          </Text>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </ScrollView>
+                </View>
+              </TouchableOpacity>
+            </Modal>
+
+            {/* Toggle Sincronización automática (solo si se vinculó) */}
+            {selectedExternalId ? (
+              <View style={styles.syncToggleRow}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={[styles.syncToggleLabel, { color: themeColors.textPrimary }]}>
+                    Sincronización automática
+                  </Text>
+                  <Text style={[styles.syncToggleSub, { color: themeColors.textSecondary }]}>
+                    Gasto e impresiones actualizados desde Meta
+                  </Text>
+                </View>
+                <Switch
+                  value={syncEnabled}
+                  onValueChange={setSyncEnabled}
+                  trackColor={{ false: '#CBD5E1', true: themeColors.primary }}
+                  thumbColor={Platform.OS === 'ios' ? '#fff' : syncEnabled ? '#fff' : '#f4f3f4'}
+                />
+              </View>
+            ) : null}
+
+            <Text style={[styles.helperText, { color: themeColors.textSecondary }]}>
+              Si vinculas tu campaña, el gasto y las impresiones se actualizarán automáticamente desde Meta Ads.
+            </Text>
+          </View>
+        )}
 
         {/* Fecha inicio */}
         <DateGroup
@@ -908,6 +1116,56 @@ const styles = StyleSheet.create({
     fontSize: typography.sizeLg,
     color: colors.textPrimary,
     textAlign: 'center',
+  },
+
+  /* Vinculación Meta Ads */
+  externalLinkCard: {
+    borderWidth: 1,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  externalLinkHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  providerBadgeMini: {
+    paddingVertical: 2,
+    paddingHorizontal: spacing.xs + 2,
+    borderRadius: radii.sm,
+  },
+  providerBadgeMiniText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: typography.bold,
+    letterSpacing: 0.5,
+  },
+  externalSectionTitle: {
+    fontSize: typography.sizeSm,
+    fontWeight: typography.bold,
+  },
+  syncToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  syncToggleLabel: {
+    fontSize: typography.sizeSm,
+    fontWeight: typography.semibold,
+  },
+  syncToggleSub: {
+    fontSize: typography.sizeXs,
+    marginTop: 1,
+  },
+  helperText: {
+    fontSize: typography.sizeXs,
+    fontStyle: 'italic',
+    lineHeight: 16,
+    marginTop: 4,
   },
 });
 

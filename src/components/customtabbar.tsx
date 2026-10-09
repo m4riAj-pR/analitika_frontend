@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { colors, typography } from '../theme/colors';
 import { useTheme } from '../ThemeContext';
+import { useProfile } from '../hooks/useProfile';
 
 // Icono duo-icons:dashboard
-const DuoDashboardIcon = ({ color, size = 26 }: { color: string; size?: number }) => (
+const DuoDashboardIcon = ({ color, size = 24 }: { color: string; size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path
       fill={color}
@@ -30,7 +31,7 @@ const DuoDashboardIcon = ({ color, size = 26 }: { color: string; size?: number }
 );
 
 // Icono Solar Ranking Bold Duotone
-const SolarRankingIcon = ({ color, size = 30 }: { color: string; size?: number }) => (
+const SolarRankingIcon = ({ color, size = 24 }: { color: string; size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path
       fill={color}
@@ -44,7 +45,7 @@ const SolarRankingIcon = ({ color, size = 30 }: { color: string; size?: number }
   </Svg>
 );
 
-const IconamoonProfileFill = ({ color, size = 26 }: { color: string; size?: number }) => (
+const IconamoonProfileFill = ({ color, size = 22 }: { color: string; size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path
       fill={color}
@@ -56,8 +57,15 @@ const IconamoonProfileFill = ({ color, size = 26 }: { color: string; size?: numb
 );
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const { colors: themeColors, isDark } = useTheme();
-  const visibleRoutes = state.routes; // show all routes including account
+  const { colors: themeColors } = useTheme();
+  const { profile } = useProfile();
+  const isOwner = profile?.id_role === 1 || profile?.id_role === 2;
+
+  // Filtrar la ruta 'team' si el usuario NO es Owner
+  const visibleRoutes = state.routes.filter((route) => {
+    if (route.name === 'team') return isOwner;
+    return true;
+  });
 
   return (
     <View style={styles.container}>
@@ -67,10 +75,6 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
           const isFocused = state.index === index;
 
           const onPress = () => {
-            if (route.name === 'campaign') {
-              navigation.navigate(route.name);
-              return;
-            }
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
@@ -83,40 +87,27 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
 
           const routeName = route.name;
           let label = '';
-          let isDashboard = false;
-          let isCreate = false;
-          let isTop = false;
-          let isAccount = false;
+          let iconName: keyof typeof Ionicons.glyphMap | null = null;
+          let isCustomIcon = false;
 
           if (routeName === 'dashboard') {
-            label = 'Dashboard';
-            isDashboard = true;
+            label = 'Inicio';
+            isCustomIcon = true;
           } else if (routeName === 'campaign') {
-            label = 'Create';
-            isCreate = true;
+            label = 'Campañas';
+            iconName = 'megaphone';
           } else if (routeName === 'ranking') {
-            label = 'Top';
-            isTop = true;
+            label = 'Ranking';
+            isCustomIcon = true;
+          } else if (routeName === 'learning') {
+            label = 'Aprende';
+            iconName = 'school';
+          } else if (routeName === 'team') {
+            label = 'Equipo';
+            iconName = 'people';
           } else if (routeName === 'account') {
             label = 'Perfil';
-            isAccount = true;
-          }
-
-          if (isCreate) {
-            return (
-              <TouchableOpacity
-                key={route.key}
-                onPress={onPress}
-                style={styles.createTabItem}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.createIconCircle, { backgroundColor: '#fff' }]}>
-                  <View style={[styles.plusVertical, { backgroundColor: themeColors.primary }]} />
-                  <View style={[styles.plusHorizontal, { backgroundColor: themeColors.primary }]} />
-                </View>
-                <Text style={styles.tabLabel}>{label}</Text>
-              </TouchableOpacity>
-            );
+            isCustomIcon = true;
           }
 
           return (
@@ -127,20 +118,14 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
               activeOpacity={0.7}
             >
               <View style={[styles.iconWrapper, isFocused && styles.iconWrapperFocused]}>
-                {isDashboard ? (
-                  <DuoDashboardIcon color="#fff" size={36} />
-                ) : isTop ? (
-                  <SolarRankingIcon color="#fff" size={36} />
-                ) : isAccount ? (
-                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255, 255, 255, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
-                    <IconamoonProfileFill color="#fff" size={22} />
-                  </View>
+                {routeName === 'dashboard' ? (
+                  <DuoDashboardIcon color="#fff" size={24} />
+                ) : routeName === 'ranking' ? (
+                  <SolarRankingIcon color="#fff" size={24} />
+                ) : routeName === 'account' ? (
+                  <IconamoonProfileFill color="#fff" size={22} />
                 ) : (
-                  <Ionicons
-                    name="alert-circle-outline"
-                    size={22}
-                    color="#fff"
-                  />
+                  <Ionicons name={iconName || 'ellipse'} size={22} color="#fff" />
                 )}
               </View>
               <Text style={[styles.tabLabel, isFocused && styles.tabLabelFocused]}>
@@ -157,20 +142,25 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 25,
-    left: 40,
-    right: 40,
+    bottom: 20,
+    left: 16,
+    right: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tabBar: {
     flexDirection: 'row',
-    height: 64,
-    borderRadius: 32,
+    height: 62,
+    borderRadius: 31,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
+    justifyContent: 'space-around',
+    paddingHorizontal: 8,
     width: '100%',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   tabItem: {
     flex: 1,
@@ -178,52 +168,23 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
   },
   iconWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
+    height: 30,
   },
   iconWrapperFocused: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    width: 60,
-    height: 36,
-    borderRadius: 18,
-  },
-  createTabItem: {
-    flex: 1,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  createIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 2,
-    position: 'relative',
-  },
-  plusVertical: {
-    width: 3.5,
-    height: 18,
-    backgroundColor: colors.primary,
-    borderRadius: 2,
-    position: 'absolute',
-  },
-  plusHorizontal: {
-    width: 18,
-    height: 3.5,
-    backgroundColor: colors.primary,
-    borderRadius: 2,
-    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    paddingHorizontal: 12,
+    height: 30,
+    borderRadius: 15,
   },
   tabLabel: {
     color: '#fff',
     fontSize: 10,
-    marginTop: 1,
+    marginTop: 2,
     fontWeight: typography.medium,
   },
   tabLabelFocused: {

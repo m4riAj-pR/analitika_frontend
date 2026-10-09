@@ -14,6 +14,7 @@ export { conversionApi, conversionsApi } from './conversion';
 export { authApi } from './auth';
 export { statsApi, trackingStatsApi } from './stats';
 export { userApi } from './user';
+export { adConnectionsApi } from './adConnections';
 export * from './client';
 export * from './config';
 export * from './types';

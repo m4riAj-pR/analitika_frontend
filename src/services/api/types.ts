@@ -19,6 +19,9 @@ export interface Campaign {
   start_date: string | null;
   end_date: string | null;
   spent: number | string | null;
+  data_source?: 'api_meta' | 'manual' | string;
+  impressions?: number;
+  ctr_real?: number;
 }
 
 export interface TrackingLink {
@@ -54,6 +57,9 @@ export interface TopCampaign {
   ingresos?: number;
   roas?: number;
   cpa?: number;
+  data_source?: 'api_meta' | 'manual' | string;
+  impressions?: number;
+  ctr_real?: number;
 }
 
 export interface User {
@@ -74,5 +80,54 @@ export interface Company {
   name: string;
   tax_id: string;
   is_active: boolean;
+}
+
+export interface AdConnection {
+  id_connection: number;
+  id_company: number;
+  provider: 'meta' | string;
+  external_account_id: string;
+  account_name: string;
+  status: 'active' | 'expired' | 'revoked' | 'error';
+  status_message?: string | null;
+  connected_by?: number;
+  connected_at: string;
+  last_sync_at?: string | null;
+}
+
+export interface OAuthConnectResponse {
+  auth_url: string;
+  provider: string;
+  state: string;
+}
+
+export interface ExternalCampaignItem {
+  id: string;
+  name: string;
+  status?: string;
+  objective?: string;
+}
+
+export interface CampaignExternalMapping {
+  id_mapping: number;
+  id_campaign: number;
+  id_connection: number;
+  provider: string;
+  external_account_id: string;
+  external_campaign_id: string;
+  external_campaign_name?: string | null;
+  sync_enabled: boolean;
+  created_at?: string;
+  last_sync_at?: string | null;
+}
+
+export interface CampaignExternalMetric {
+  id_metric: number;
+  id_mapping: number;
+  metric_date: string;
+  impressions: number;
+  spend: number;
+  clicks: number;
+  synced_at: string;
 }
 

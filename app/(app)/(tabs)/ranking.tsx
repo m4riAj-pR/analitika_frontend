@@ -69,10 +69,23 @@ function RankingCard({ item, rank, isManager, onPress }: { item: TopCampaign; ra
 
       {/* info */}
       <View style={styles.cardInfo}>
-        <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+          {item.data_source?.startsWith('api_') && (
+            <View style={styles.apiBadgeMini}>
+              <Text style={styles.apiBadgeMiniText}>Meta</Text>
+            </View>
+          )}
+        </View>
         <View style={styles.metaRow}>
           <Ionicons name="star" size={11} color="rgba(255,255,255,0.6)" />
           <Text style={styles.metaText}>{formatNumber(item.clicks || item.clics)} clics</Text>
+          {item.impressions != null && item.impressions > 0 && item.ctr_real != null && (
+            <>
+              <Text style={styles.metaDot}>•</Text>
+              <Text style={styles.metaText}>CTR {Number(item.ctr_real).toFixed(1)}%</Text>
+            </>
+          )}
         </View>
       </View>
 
@@ -345,4 +358,18 @@ const styles = StyleSheet.create({
   },
   roiPillTop: { backgroundColor: 'rgba(173, 141, 242, 0.15)' },
   roiText: { fontSize: 12, fontWeight: typography.bold, color: 'rgba(255,255,255,0.85)' },
+
+  /* Badge API */
+  apiBadgeMini: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  apiBadgeMiniText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: typography.bold,
+    letterSpacing: 0.3,
+  },
 });
