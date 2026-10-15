@@ -61,8 +61,9 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   const { profile } = useProfile();
   const isOwner = profile?.id_role === 1 || profile?.id_role === 2;
 
-  // Filtrar la ruta 'team' si el usuario NO es Owner
+  // Filtrar la ruta 'team' si el usuario NO es Owner, y siempre ocultar 'learning'
   const visibleRoutes = state.routes.filter((route) => {
+    if (route.name === 'learning') return false;
     if (route.name === 'team') return isOwner;
     return true;
   });
@@ -99,9 +100,6 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
           } else if (routeName === 'ranking') {
             label = 'Ranking';
             isCustomIcon = true;
-          } else if (routeName === 'learning') {
-            label = 'Aprende';
-            iconName = 'school';
           } else if (routeName === 'team') {
             label = 'Equipo';
             iconName = 'people';

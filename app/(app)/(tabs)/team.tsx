@@ -16,9 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useProfile } from '@/src/hooks/useProfile';
 import { usersApi, personsApi } from '@/src/services/api';
-import { colors, radii, shadows, spacing, typography } from '@/src/theme/colors';
+import { radii, shadows, typography } from '@/src/theme/colors';
 import { useTheme } from '@/src/ThemeContext';
-import AccountAvatar from '@/src/components/AccountAvatar';
+
 
 export default function TeamManagementScreen() {
   const insets = useSafeAreaInsets();
@@ -48,7 +48,6 @@ export default function TeamManagementScreen() {
       setLoading(true);
       const allUsers: any = await usersApi.getUsers();
       const list = Array.isArray(allUsers) ? allUsers : (allUsers?.response || []);
-      // Filtrar solo Managers (rol 3) o del equipo de la empresa
       const filtered = list.filter((u: any) => u.id_role === 3);
       setManagers(filtered);
     } catch (err) {
@@ -203,7 +202,7 @@ export default function TeamManagementScreen() {
           </View>
           <View style={[styles.summaryCard, { backgroundColor: themeColors.bgCard }]}>
             <Ionicons name="key" size={24} color="#10B981" />
-            <Text style={[styles.summaryNum, { color: themeColors.textPrimary }]}>Rol 3</Text>
+            <Text style={[styles.summaryNum, { color: themeColors.textPrimary }]}>Owner</Text>
             <Text style={[styles.summaryLabel, { color: themeColors.textSecondary }]}>Permisos de Operación</Text>
           </View>
         </View>

@@ -196,6 +196,7 @@ function KpiCard({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { campaignId } = useLocalSearchParams();
   const { colors: themeColors, isDark } = useTheme();
   const { profile } = useProfile();
@@ -269,7 +270,7 @@ export default function DashboardScreen() {
     }, [loadData])
   );
 
-  // 2️⃣ Cargar estadísticas
+  // 2️Cargar estadísticas
   const fetchStats = useCallback(async (campaign: Campaign) => {
     if (campaign.id_campaign == null) {
       setStatsError(true);
@@ -391,10 +392,25 @@ export default function DashboardScreen() {
         {/* Título de sección */}
         <View style={styles.listHeaderSection}>
           <Text style={[styles.listTitle, { color: themeColors.textPrimary }]}>Mis Campañas</Text>
-          <Text style={[styles.listSubtitle, { color: themeColors.textSecondary }]}>
-            Selecciona una campaña para ver sus estadísticas
-          </Text>
         </View>
+
+        {/* Banner Aprende Marketing */}
+        <TouchableOpacity
+          style={[styles.learnBanner, { backgroundColor: isDark ? '#1E293B' : '#EDE9FE' }]}
+          activeOpacity={0.88}
+          onPress={() => router.push('/(app)/(tabs)/learning' as any)}
+        >
+          <View style={[styles.learnBannerIconBox, { backgroundColor: isDark ? '#2D1D6E' : '#DDD6FE' }]}>
+            <Ionicons name="school" size={22} color={themeColors.primary} />
+          </View>
+          <View style={styles.learnBannerContent}>
+            <Text style={[styles.learnBannerTitle, { color: themeColors.primary }]}>Aprende Marketing</Text>
+            <Text style={[styles.learnBannerSub, { color: themeColors.textSecondary }]}>
+              Guías, estrategias y calculadora de ROI
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={themeColors.primary} />
+        </TouchableOpacity>
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
@@ -752,6 +768,37 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   listScrollContent: { paddingHorizontal: 24 },
+
+  // LEARN BANNER
+  learnBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 24,
+    marginBottom: 16,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  learnBannerIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  learnBannerContent: {
+    flex: 1,
+  },
+  learnBannerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  learnBannerSub: {
+    fontSize: 12,
+    fontWeight: '400',
+  },
 
   // CARD DESIGN MOCKUP
   cardContainer: {
