@@ -37,7 +37,6 @@ export default function TeamManagementScreen() {
   const [adding, setAdding] = useState(false);
   const [newEmployee, setNewEmployee] = useState({
     name: '',
-    lastname: '',
     email: '',
     password: '',
   });
@@ -80,7 +79,6 @@ export default function TeamManagementScreen() {
       // 1. Crear persona
       const personRes: any = await personsApi.createPerson({
         name: newEmployee.name.trim(),
-        lastname: newEmployee.lastname.trim(),
         email: newEmployee.email.trim(),
         phone: '',
       });
@@ -97,7 +95,7 @@ export default function TeamManagementScreen() {
 
         Alert.alert('Éxito', 'Empleado (Management) registrado correctamente.');
         setShowAddModal(false);
-        setNewEmployee({ name: '', lastname: '', email: '', password: '' });
+        setNewEmployee({ name: '', email: '', password: '' });
         fetchManagers();
       }
     } catch (err: any) {
@@ -131,7 +129,7 @@ export default function TeamManagementScreen() {
 
   const filteredManagers = managers.filter(m => {
     const q = searchQuery.toLowerCase();
-    const nameStr = `${m.name || ''} ${m.lastname || ''} ${m.email || ''}`.toLowerCase();
+    const nameStr = `${m.name || ''} ${m.email || ''}`.toLowerCase();
     return nameStr.includes(q);
   });
 
@@ -228,7 +226,7 @@ export default function TeamManagementScreen() {
 
               <View style={styles.userInfo}>
                 <Text style={[styles.userName, { color: themeColors.textPrimary }]} numberOfLines={1}>
-                  {m.name || 'Empleado'} {m.lastname || ''}
+                  {m.name || 'Empleado'}
                 </Text>
                 <Text style={[styles.userEmail, { color: themeColors.textSecondary }]} numberOfLines={1}>
                   {m.email}
@@ -274,16 +272,7 @@ export default function TeamManagementScreen() {
                 />
               </View>
 
-              <View style={styles.fieldGroup}>
-                <Text style={[styles.fieldLabel, { color: themeColors.textSecondary }]}>Apellido</Text>
-                <TextInput
-                  style={[styles.fieldInput, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
-                  placeholder="Apellido"
-                  placeholderTextColor={themeColors.textMuted}
-                  value={newEmployee.lastname}
-                  onChangeText={(t) => setNewEmployee({ ...newEmployee, lastname: t })}
-                />
-              </View>
+
 
               <View style={styles.fieldGroup}>
                 <Text style={[styles.fieldLabel, { color: themeColors.textSecondary }]}>Correo Electrónico *</Text>

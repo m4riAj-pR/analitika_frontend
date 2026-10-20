@@ -60,6 +60,8 @@ export interface TopCampaign {
   data_source?: 'api_meta' | 'manual' | string;
   impressions?: number;
   ctr_real?: number;
+  /** Position in ranking after sorting */
+  rankPosition?: number;
 }
 
 export interface User {
@@ -68,9 +70,8 @@ export interface User {
   id_role: number;
   id_company: number;
   email: string;
-  first_name?: string;
-  last_name?: string;
   name?: string;
+  first_name?: string; // backward-compat fallback from API
   phone: string;
   is_active: boolean;
 }

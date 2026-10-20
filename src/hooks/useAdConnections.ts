@@ -19,7 +19,7 @@ export function useAdConnections() {
   const [error, setError] = useState<string | null>(null);
 
   const isOwnerOrAdmin = profile?.id_role === 1 || profile?.id_role === 2;
-  const companyId = profile?.id_company;
+  const companyId = profile?.id_company || (profile?.companies && profile.companies.length > 0 ? profile.companies[0].id_company : undefined);
 
   const fetchConnections = useCallback(async () => {
     if (!companyId || !isOwnerOrAdmin) {
@@ -59,17 +59,23 @@ export function useAdConnections() {
 
     try {
       setConnecting(true);
+      console.log('[Meta OAuth] Iniciando conexión para companyId:', companyId);
+
       // 1. Iniciar sesión OAuth en el backend
       const oauthRes = await adConnectionsApi.connectMeta(companyId);
+      console.log('[Meta OAuth] Respuesta del backend:', oauthRes);
       if (!oauthRes || !oauthRes.auth_url) {
-        throw new Error('No se recibió la URL de autorización de Meta');
+        throw new Error('No se recibió la URL de autorización de Meta desde el servidor.');
       }
 
       // 2. Definir redirect URI con el scheme configurado
       const redirectUrl = Linking.createURL('ad-connections/callback');
+      console.log('[Meta OAuth] Redirect URL configurada:', redirectUrl);
+      console.log('[Meta OAuth] Abriendo navegador con auth_url:', oauthRes.auth_url);
 
       // 3. Abrir in-app browser seguro
       const result = await WebBrowser.openAuthSessionAsync(oauthRes.auth_url, redirectUrl);
+      console.log('[Meta OAuth] Resultado de sesión de navegador:', result);
 
       // 4. Evaluar resultado
       if (result.type === 'cancel' || result.type === 'dismiss') {

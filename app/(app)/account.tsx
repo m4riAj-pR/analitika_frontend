@@ -33,8 +33,7 @@ export default function AccountScreen() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
+    name: '',
     phone: '',
   });
 
@@ -49,8 +48,7 @@ export default function AccountScreen() {
   useEffect(() => {
     if (profile) {
       setFormData({
-        first_name: profile.first_name || '',
-        last_name: profile.last_name || '',
+        name: profile.name || profile.first_name || '',
         phone: profile.phone || '',
       });
     }
@@ -106,8 +104,7 @@ export default function AccountScreen() {
   const handleSave = async () => {
     try {
       await updateProfile({
-        first_name: formData.first_name.trim(),
-        last_name: formData.last_name.trim(),
+        name: formData.name.trim(),
         phone: formData.phone.trim(),
       });
       setIsEditing(false);
@@ -125,9 +122,7 @@ export default function AccountScreen() {
     );
   }
 
-  const fullName = profile?.first_name || profile?.last_name
-    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
-    : 'Usuario';
+  const fullName = profile?.name || profile?.first_name || 'Usuario';
 
   return (
     <ScrollView
@@ -162,23 +157,12 @@ export default function AccountScreen() {
             <Text style={[styles.cardTitle, { color: themeColors.textPrimary }]}>Editar Información</Text>
             
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Nombre</Text>
+              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Nombre completo</Text>
               <TextInput
                 style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
-                value={formData.first_name}
-                onChangeText={(t) => setFormData({ ...formData, first_name: t })}
-                placeholder="Tu nombre"
-                placeholderTextColor={themeColors.textMuted}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Apellido</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
-                value={formData.last_name}
-                onChangeText={(t) => setFormData({ ...formData, last_name: t })}
-                placeholder="Tu apellido"
+                value={formData.name}
+                onChangeText={(t) => setFormData({ ...formData, name: t })}
+                placeholder="Tu nombre completo"
                 placeholderTextColor={themeColors.textMuted}
               />
             </View>

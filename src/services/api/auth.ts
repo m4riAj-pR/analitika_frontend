@@ -35,7 +35,6 @@ export const registerUser = async (data: any) => {
       password:   data.password,
       first_name: data.first_name || data.name || "",
       name:       data.name || data.first_name || "",
-      ...(data.last_name ? { last_name: data.last_name } : {}),
       phone:      data.phone      || "",
       company:    data.company    || "",
     }),
@@ -79,7 +78,6 @@ export const logoutUser = async () => {
 // CORRECCIÓN 1: actualizar persona por id_person del usuario actual
 export const updateProfile = async (idPerson: number, data: {
   name?: string;
-  lastname?: string;
   email?: string;
   phone?: string;
 }) => {

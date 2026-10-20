@@ -66,22 +66,18 @@ export function useProfile() {
             setSaving(true);
             if (!profile?.id_person) throw new Error("No hay sesión activa");
 
-            // CORRECCIÓN 5: campos correctos para el schema Person del backend
             const payload: any = {
                 name:  data.name || data.first_name,
                 email: data.email || profile.email,
                 phone: data.phone,
             };
-            if (data.lastname || data.last_name) {
-                payload.lastname = data.lastname || data.last_name;
-            }
             await authService.updateProfile(profile.id_person, payload);
 
             // Actualizar caché local
             const updatedUser = {
                 ...profile,
-                first_name: data.first_name || data.name || profile.first_name,
-                last_name: data.last_name || data.lastname || profile.last_name,
+                name: data.name || data.first_name || profile.name,
+                first_name: data.name || data.first_name || profile.first_name,
                 phone: data.phone || profile.phone,
             };
             await authService.authApi.saveUser(updatedUser);
