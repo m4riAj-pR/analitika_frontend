@@ -94,3 +94,41 @@ export interface Company {
   tax_id: string;
   is_active: boolean;
 }
+
+// ── Predicción de ROI a 7 días ────────────────────────────────────────────
+
+/** Respuesta de GET /analitika/campaigns/{id}/predict. El ROI viene como razón (0,35 = 35 %). */
+export interface CampaignPrediction {
+  id_campaign: number;
+  predicted_roi_7d: number;
+  predicted_roi_7d_pct: string;
+  observation_window_hours: number;
+  hours_of_data_available: number;
+  has_full_observation_window: boolean;
+  low_confidence_warning: string | null;
+  dataset_warning: string | null;
+  model_artifact: string;
+  model_version: number | null;
+}
+
+/** Canales que acepta el simulador (Meta se excluye: la integración fue retirada). */
+export const SCENARIO_CHANNELS = ['Google', 'WhatsApp', 'Email', 'TikTok'] as const;
+export type ScenarioChannel = typeof SCENARIO_CHANNELS[number];
+
+export interface ScenarioInput {
+  channel: ScenarioChannel;
+  spend_48h: number;
+  clicks_48h: number;
+  conversions_48h: number;
+  revenue_48h: number;
+}
+
+export type StrategicRecommendation = 'Escalar presupuesto' | 'Mantener y monitorear' | 'Optimizar o pausar';
+
+/** Respuesta de POST /api/v1/campaigns/predict-roi. */
+export interface ScenarioPrediction {
+  predicted_roi_7d: number;
+  estimated_revenue_7d: number;
+  strategic_recommendation: StrategicRecommendation;
+  status: string;
+}

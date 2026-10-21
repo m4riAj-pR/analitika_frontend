@@ -12,6 +12,7 @@ export { clicksApi } from './clicks';
 export { conversionApi, conversionsApi } from './conversion';
 export { authApi } from './auth';
 export { statsApi, trackingStatsApi } from './stats';
+export { predictionsApi } from './predictions';
 export * from './client';
 export * from './config';
 export * from './types';

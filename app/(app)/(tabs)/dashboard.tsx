@@ -19,6 +19,7 @@ import {
 import { BarChart } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AccountAvatar from '../../../src/components/AccountAvatar';
+import RoiPredictor from '../../../src/components/RoiPredictor';
 import { useProfile } from '../../../src/hooks/useProfile';
 import { campaignsApi } from '../../../src/services/api/campaign';
 import { notificationsApi } from '../../../src/services/api/notifications';
@@ -189,6 +190,8 @@ export default function DashboardScreen() {
   const { colors: themeColors, isDark } = useTheme();
   const { profile } = useProfile();
   const isManager = profile?.id_role === 3;
+  // La proyección de ROI está restringida en el servidor a Owner (2) y Super Admin (1)
+  const canPredict = profile?.id_role === 1 || profile?.id_role === 2;
 
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -499,6 +502,15 @@ export default function DashboardScreen() {
                 <Text style={[styles.noDataText, { color: themeColors.textMuted }]}>No hay datos suficientes para la gráfica.</Text>
               )}
             </View>
+
+            {/* DASHBOARD PREDICTIVO: después de los indicadores y del gráfico, antes del detalle de clics */}
+            {canPredict && metricas?.ingresos != null && selectedCampaign?.id_campaign != null && (
+              <RoiPredictor
+                key={selectedCampaign.id_campaign}
+                idCampaign={selectedCampaign.id_campaign}
+                stats={metricas}
+              />
+            )}
 
             {/* TABLA DE CLICS RECIENTES */}
             <View style={[styles.tableCard, { backgroundColor: themeColors.bgCard }]}>

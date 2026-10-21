@@ -141,10 +141,10 @@ export default function Index() {
         </View>
 
         <View style={styles.textContainer}>
-          <Text style={[styles.title, { color: themeColors.textPrimary }]}>Bienvenid@ a{"\n"}Analitika!</Text>
+          <Text style={[styles.title, { color: themeColors.textPrimary }]}>¡Bienvenido a{"\n"}Analitika!</Text>
           <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
             Una app para seguimiento y{"\n"}
-            consulta de estadisticas para{"\n"}
+            consulta de estadísticas para{"\n"}
             campañas digitales
           </Text>
         </View>

@@ -278,7 +278,7 @@ export default function Login() {
                 {/* Footer */}
                 <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
                     <Text style={[styles.footerText, { color: themeColors.textBody }]}>
-                        ¿No tienes cuenta ?{" "}
+                        ¿No tienes cuenta?{" "}
                         <Text style={[styles.footerLink, { color: themeColors.primary }]}>Regístrate gratis</Text>
                     </Text>
                 </TouchableOpacity>
