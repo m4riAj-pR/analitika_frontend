@@ -7,17 +7,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getToken, getUser, request } from '../services/api/client';
 import type { ApiError, User } from '../services/api/types';
+import { normalizeUser } from '../services/api/auth';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-/**
- * Perfil autenticado. Extiende User con campos opcionales
- * que el backend puede incluir en la respuesta de /me.
- */
-export interface AuthProfile extends User {
-  company_name?: string;
-  companies?: ReadonlyArray<{ id_company: number; name: string }>;
-}
+/** Perfil autenticado (respuesta de /me normalizada con la empresa principal). */
+export type AuthProfile = User;
 
 export interface UseAuthGuardResult {
   /** True mientras se valida el token contra el servidor. */
@@ -34,6 +29,9 @@ const GRACE_PERIOD_MS = 5 * 60 * 1000; // 5 minutos
 
 let lastValidationTs = 0;
 let validatedProfile: AuthProfile | null = null;
+// Token con el que se validó la caché: si cambia (logout + login de otro usuario)
+// la caché se descarta, evitando enrutar con el rol del usuario anterior.
+let validatedToken: string | null = null;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -86,9 +84,11 @@ export function useAuthGuard(): UseAuthGuardResult {
   const [profile, setProfile] = useState<AuthProfile | null>(null);
 
   const validate = useCallback(async () => {
-    // 1. Grace period: si ya validamos recientemente, usar caché del módulo
+    const token = await getToken();
+
+    // 1. Grace period: si ya validamos recientemente con este mismo token, usar caché
     const now = Date.now();
-    if (validatedProfile !== null && now - lastValidationTs < GRACE_PERIOD_MS) {
+    if (token && token === validatedToken && validatedProfile !== null && now - lastValidationTs < GRACE_PERIOD_MS) {
       setProfile(validatedProfile);
       setIsAuthorized(true);
       setIsValidating(false);
@@ -96,7 +96,6 @@ export function useAuthGuard(): UseAuthGuardResult {
     }
 
     // 2. Sin token → no autenticado
-    const token = await getToken();
     if (!token) {
       validatedProfile = null;
       lastValidationTs = 0;
@@ -109,11 +108,12 @@ export function useAuthGuard(): UseAuthGuardResult {
     // 3. Validar token contra el servidor
     try {
       const raw = await request<unknown>('/me');
-      const user = extractProfile(raw);
+      const user = extractProfile(normalizeUser(raw));
 
       if (user) {
         lastValidationTs = Date.now();
         validatedProfile = user;
+        validatedToken = token;
         setProfile(user);
         setIsAuthorized(true);
       } else {
@@ -132,7 +132,7 @@ export function useAuthGuard(): UseAuthGuardResult {
         setProfile(null);
       } else {
         // Error de red o timeout — NO cerrar sesión, usar caché local
-        const cachedData: unknown = await getUser();
+        const cachedData: unknown = normalizeUser(await getUser());
         const cached = extractProfile(cachedData);
 
         if (cached) {

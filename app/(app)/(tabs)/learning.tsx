@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, radii, shadows, spacing, typography } from '@/src/theme/colors';
+import { useRouter } from 'expo-router';
+import { radii, shadows, typography } from '@/src/theme/colors';
 import { useTheme } from '@/src/ThemeContext';
 
 interface MarketingGuide {
@@ -27,12 +28,12 @@ interface MarketingGuide {
 const GUIDES: MarketingGuide[] = [
   {
     id: 'strategy_360',
-    title: 'Estrategia de Contenido 360° (Posts + Reels + TikToks)',
+    title: 'Estrategia de contenido multicanal',
     category: 'Estrategia',
     readTime: '4 min',
     icon: 'planet-outline',
     color: '#8B5CF6',
-    summary: 'Aprende a integrar Posts, Reels e historias de TikTok bajo una misma campaña unificada.',
+    summary: 'Cómo coordinar publicaciones, video corto y otros formatos bajo una misma campaña medible.',
     steps: [
       {
         title: '1. Definición del Pilar de Contenido',
@@ -43,16 +44,16 @@ const GUIDES: MarketingGuide[] = [
         content: 'Utiliza los Posts estáticos o carruseles para educar y generar guardados. Muestra infografías, testimonios o propuestas de valor detalladas.',
       },
       {
-        title: '3. Formato Reels (Instagram / Meta)',
+        title: '3. Video corto vertical',
         content: 'Capta atención en los primeros 3 segundos con ganchos visuales. Usa audio en tendencia y texto superpuesto claro.',
       },
       {
-        title: '4. Formato TikToks',
-        content: 'Crea contenido orgánico, nativo y dinámico. La autenticidad en TikTok supera a la producción hipereditada. Conecta directo con la audiencia.',
+        title: '4. Contenido nativo por plataforma',
+        content: 'Adapta cada pieza al lenguaje de la plataforma donde se publica. La autenticidad suele rendir más que la producción excesiva.',
       },
       {
         title: '5. Consolidación de Métricas',
-        content: 'Mide la suma de impresiones y clics en Analitika para comparar qué formato genera el menor Costo por Clic (CPC).',
+        content: 'Usa un enlace de seguimiento por canal en Analitika y compara clics, conversiones y Costo por Clic (CPC) entre ellos.',
       },
     ],
   },
@@ -79,33 +80,11 @@ const GUIDES: MarketingGuide[] = [
       },
     ],
   },
-  {
-    id: 'meta_api_guide',
-    title: 'Vinculación de Meta Marketing API',
-    category: 'Automatización',
-    readTime: '5 min',
-    icon: 'link-outline',
-    color: '#3B82F6',
-    summary: 'Guía paso a paso para sincronizar tus anuncios de Facebook e Instagram en tiempo real.',
-    steps: [
-      {
-        title: '1. Conexión OAuth con Meta',
-        content: 'En la sección de Campañas, pulsa en "Conectar Meta Ads". Autoriza a Analitika a consultar los datos de tu cuenta publicitaria de forma segura.',
-      },
-      {
-        title: '2. Selección de Campaña Externa',
-        content: 'Al crear o editar una campaña, elige "Meta" como plataforma y vincula el ID de tu campaña activa de Facebook/Instagram.',
-      },
-      {
-        title: '3. Sincronización Automática',
-        content: 'Analitika importará automáticamente el gasto ejecutado, impresiones y calculará el CTR real diario.',
-      },
-    ],
-  },
 ];
 
 export default function LearningScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { colors: themeColors, isDark } = useTheme();
 
   const [selectedGuide, setSelectedGuide] = useState<MarketingGuide | null>(null);
@@ -124,7 +103,11 @@ export default function LearningScreen() {
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        {/* Esta pantalla no tiene pestaña propia: se abre desde Inicio, así que necesita volver */}
+        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel="Volver" style={{ marginRight: 8 }}>
+          <Ionicons name="arrow-back" size={24} color={themeColors.primary} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
           <Text style={[styles.headerTitle, { color: themeColors.primary }]}>Aprende Marketing</Text>
           <Text style={[styles.headerSub, { color: themeColors.textSecondary }]}>
             Guías estratégicas y herramientas prácticas

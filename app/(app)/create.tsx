@@ -9,7 +9,6 @@ import {
     Platform,
     ScrollView,
     StyleSheet,
-    Switch,
     Text,
     TextInput,
     TouchableOpacity,
@@ -19,8 +18,8 @@ import * as Clipboard from 'expo-clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AccountAvatar from '../../src/components/AccountAvatar';
 import { useProfile } from '../../src/hooks/useProfile';
-import { useAdConnections } from '../../src/hooks/useAdConnections';
-import { campaignsApi, channelsApi, trackingLinksApi, adConnectionsApi } from '../../src/services/api';
+import { campaignsApi, channelsApi, trackingLinksApi } from '../../src/services/api';
+import { statusLabel } from '../../src/utils/format';
 import { CAMPAIGN_STATUS } from '../../src/services/api/types';
 import {
     colors,
@@ -160,16 +159,17 @@ export default function CreateCampaignScreen() {
   const [status, setStatus] = useState('active');
   const [showStatusModal, setShowStatusModal] = useState(false);
   const statusOptions = CAMPAIGN_STATUS;
+  // El nombre se guarda tal cual en /analitika/channels; el backend lo usa para
+  // generar utm_source en el enlace de seguimiento (google, tiktok, email…).
   const PREDEFINED_CHANNELS = [
-    { label: 'Meta (FB/IG)', value: 'Meta' },
-    { label: 'Google Ads', value: 'Google' },
-    { label: 'TikTok Ads', value: 'TikTok' },
+    { label: 'Google Ads', value: 'Google Ads' },
+    { label: 'TikTok Ads', value: 'TikTok Ads' },
     { label: 'Email Marketing', value: 'Email' },
     { label: 'WhatsApp', value: 'WhatsApp' },
-    { label: 'Organic (Social/SEO)', value: 'Organic' },
-    { label: 'LinkedIn Ads', value: 'LinkedIn' },
-    { label: 'Twitter / X', value: 'Twitter' },
-    { label: 'Otros', value: 'Others' },
+    { label: 'Orgánico (redes / SEO)', value: 'Orgánico' },
+    { label: 'LinkedIn Ads', value: 'LinkedIn Ads' },
+    { label: 'X (Twitter)', value: 'X' },
+    { label: 'Otro', value: 'Otro' },
   ];
 
   // Datos del Canal (entidad separada)
@@ -186,50 +186,14 @@ export default function CreateCampaignScreen() {
   const [endYyyy, setEndYyyy] = useState('');
 
   const [spent, setSpent] = useState('');
+  const [budget, setBudget] = useState('');
+  const [destination, setDestination] = useState('');
+  const [existingLink, setExistingLink] = useState<{ id_link: number; id_channel: number | null; destination: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [trackUrl, setTrackUrl] = useState<string | null>(null);
 
-  // Vinculación Meta Ads (Solo Owner y si el canal es Meta)
   const isOwner = profile?.id_role === 1 || profile?.id_role === 2;
-  const [activeConnection, setActiveConnection] = useState<any>(null);
-  const [externalCampaigns, setExternalCampaigns] = useState<any[]>([]);
-  const [loadingExternalCampaigns, setLoadingExternalCampaigns] = useState(false);
-  const [selectedExternalId, setSelectedExternalId] = useState('');
-  const [selectedExternalName, setSelectedExternalName] = useState('');
-  const [syncEnabled, setSyncEnabled] = useState(true);
-  const [showExternalModal, setShowExternalModal] = useState(false);
-
-  // Comprobar conexiones activas para la empresa
-  useEffect(() => {
-    const checkConnections = async () => {
-      const compId = profile?.id_company || (profile?.companies?.[0]?.id_company);
-      if (!isOwner || !compId) return;
-      try {
-        const conns: any = await adConnectionsApi.getCompanyConnections(compId);
-        const list = Array.isArray(conns) ? conns : conns?.response || [];
-        const active = list.find((c: any) => c.status === 'active' && c.provider?.toLowerCase() === 'meta');
-        if (active) {
-          setActiveConnection(active);
-          setLoadingExternalCampaigns(true);
-          try {
-            const extCamps: any = await adConnectionsApi.getExternalCampaigns(compId, active.id_connection);
-            setExternalCampaigns(Array.isArray(extCamps) ? extCamps : extCamps?.response || []);
-          } catch (err) {
-            console.log('Error fetching Meta campaigns:', err);
-          } finally {
-            setLoadingExternalCampaigns(false);
-          }
-        } else {
-          setActiveConnection(null);
-          setExternalCampaigns([]);
-        }
-      } catch (err) {
-        console.log('Error checking ad connections:', err);
-      }
-    };
-    checkConnections();
-  }, [isOwner, profile?.id_company, profile?.companies]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -250,7 +214,8 @@ export default function CreateCampaignScreen() {
             setDescription(cleanDesc);
 
             setStatus(camp.status || 'active');
-            setSpent(camp.spent?.toString() || '');
+            setSpent(camp.spent != null ? String(Number(camp.spent)) : '');
+            setBudget(camp.budget != null ? String(Number(camp.budget)) : '');
             
             if (camp.start_date) {
               const [y, m, d] = camp.start_date.split('-');
@@ -262,29 +227,23 @@ export default function CreateCampaignScreen() {
             }
           }
 
-          // Cargar el link trackeable
+          // Enlace de seguimiento y canal asociados (la relación campaña↔canal vive en tracking_links)
           try {
-            const links = await trackingLinksApi.listByCampaign(campaignId);
-            if (links && links.length > 0 && links[0].id_link) {
-              setTrackUrl(trackingLinksApi.publicTrackUrl(Number(links[0].id_link)));
+            const [links, channels]: any = await Promise.all([
+              trackingLinksApi.listByCampaign(campaignId),
+              channelsApi.getChannels().catch(() => []),
+            ]);
+            const link = Array.isArray(links) && links.length > 0 ? links[0] : null;
+            if (link?.id_link) {
+              setExistingLink({ id_link: Number(link.id_link), id_channel: link.id_channel ?? null, destination: link.destination || '' });
+              setTrackUrl(trackingLinksApi.publicTrackUrl(Number(link.id_link)));
+              // Se muestra el destino sin los UTM que agrega el backend
+              setDestination(String(link.destination || '').replace(/[?&]utm_source=.*$/, ''));
+              const ch = (Array.isArray(channels) ? channels : []).find((c: any) => c.id_channel === link.id_channel);
+              if (ch?.name) setChannelName(ch.name);
             }
-          } catch (err) {
-            console.log("No se pudo cargar el link trackeable", err);
-          }
-
-          // Cargar mapeo externo si existe (para Owner)
-          if (isOwner) {
-            try {
-              const mapping: any = await adConnectionsApi.getMapping(campaignId);
-              if (mapping && mapping.external_campaign_id) {
-                setSelectedExternalId(mapping.external_campaign_id);
-                setSelectedExternalName(mapping.external_campaign_name || `ID: ${mapping.external_campaign_id}`);
-                setSyncEnabled(Boolean(mapping.sync_enabled));
-                setChannelName('Meta');
-              }
-            } catch (mappingErr) {
-              console.log("No external mapping or error:", mappingErr);
-            }
+          } catch {
+            // Sin enlace: se generará al guardar con la URL de destino
           }
         } catch (err) {
           Alert.alert("Error", "No se pudo cargar la campaña.");
@@ -296,7 +255,36 @@ export default function CreateCampaignScreen() {
       setSessionLoading(false);
     };
     loadData();
-  }, [campaignId, isOwner]);
+  }, [campaignId]);
+
+  /** Convierte DD/MM/YYYY en YYYY-MM-DD validando que la fecha exista (p. ej. rechaza 31/02). */
+  const toIsoDate = (dd: string, mm: string, yyyy: string): string | null | 'invalid' => {
+    if (!dd && !mm && !yyyy) return null;
+    const d = Number(dd), m = Number(mm), y = Number(yyyy);
+    if (!d || !m || yyyy.length !== 4) return 'invalid';
+    const date = new Date(Date.UTC(y, m - 1, d));
+    if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return 'invalid';
+    return `${yyyy}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  };
+
+  const parseAmount = (v: string): number | null | 'invalid' => {
+    if (!v.trim()) return null;
+    const n = Number(v.trim().replace(/\s/g, '').replace(',', '.'));
+    return Number.isFinite(n) && n >= 0 ? n : 'invalid';
+  };
+
+  /** Busca el canal por nombre; si no existe y el rol lo permite (Owner), lo crea. */
+  const resolveChannelId = async (nameToFind: string): Promise<number | null> => {
+    if (!nameToFind.trim()) return null;
+    const find = (list: any) =>
+      (Array.isArray(list) ? list : []).find((c: any) => String(c.name || '').trim().toLowerCase() === nameToFind.trim().toLowerCase());
+    const existing = find(await channelsApi.getChannels());
+    if (existing) return Number(existing.id_channel);
+    if (!isOwner) return null; // el backend solo permite crear canales a Owner / Super Admin
+    await channelsApi.createChannel({ name: nameToFind.trim(), description: channelDescription.trim() || null });
+    const created = find(await channelsApi.getChannels());
+    return created ? Number(created.id_channel) : null;
+  };
 
   const handleCreate = async () => {
     if (!name.trim()) {
@@ -304,164 +292,90 @@ export default function CreateCampaignScreen() {
       return;
     }
 
-    // Intentar obtener el ID de la empresa de varias fuentes dentro del perfil
-    let companyId = profile?.id_company;
-    
-    if (!companyId && profile?.companies && profile.companies.length > 0) {
-      companyId = profile.companies[0].id_company;
+    const companyId = profile?.id_company ?? profile?.companies?.[0]?.id_company;
+    if (!companyId) {
+      Alert.alert('Empresa no detectada', 'Tu usuario no tiene una empresa asignada. Solicita al Owner que te vincule a una empresa.');
+      return;
     }
 
-    // Si sigue sin haber ID y es Super Admin (rol 1), intentar obtener la primera empresa del sistema
-    if (!companyId && profile?.id_role === 1) {
-      try {
-        const { companiesApi } = await import('../../src/services/api/companies');
-        const companies: any = await companiesApi.getCompanies();
-        const list = Array.isArray(companies) ? companies : (companies?.response || []);
-        if (list.length > 0) {
-          companyId = list[0].id_company;
-        }
-      } catch (err) {
-        console.log("Error al intentar obtener empresa fallback para Admin:", err);
+    const startDate = toIsoDate(startDd, startMm, startYyyy);
+    const endDate = toIsoDate(endDd, endMm, endYyyy);
+    if (startDate === 'invalid' || endDate === 'invalid') {
+      Alert.alert('Fecha inválida', 'Revisa las fechas: deben existir en el calendario (DD/MM/AAAA).');
+      return;
+    }
+    const currentYear = new Date().getFullYear();
+    for (const [iso, label] of [[startDate, 'fecha de inicio'], [endDate, 'fecha de fin']] as const) {
+      if (!iso) continue;
+      const year = Number(iso.slice(0, 4));
+      if (year < currentYear || year > currentYear + 1) {
+        Alert.alert('Fecha inválida', `La ${label} debe estar en ${currentYear} o ${currentYear + 1}.`);
+        return;
       }
     }
+    if (startDate && endDate && endDate < startDate) {
+      Alert.alert('Fecha inválida', 'La fecha de fin no puede ser anterior a la de inicio.');
+      return;
+    }
 
-    if (!companyId) {
-      Alert.alert(
-        'Empresa no detectada', 
-        'No pudimos identificar tu empresa vinculada. Asegúrate de que tu perfil tenga una empresa asignada o contacta a soporte.',
-        [{ text: 'Entendido' }]
-      );
+    const numericSpent = parseAmount(spent);
+    const numericBudget = parseAmount(budget);
+    if (numericSpent === 'invalid' || numericBudget === 'invalid') {
+      Alert.alert('Valor inválido', 'La inversión y el presupuesto deben ser números mayores o iguales a cero.');
+      return;
+    }
+
+    const dest = destination.trim();
+    if (!/^https?:\/\/[^\s.]+\.[^\s]+$/i.test(dest)) {
+      Alert.alert('URL de destino requerida', 'Ingresa la página a la que llegará el tráfico, empezando por http:// o https://');
       return;
     }
 
     try {
       setLoading(true);
 
-      const startDate = (startYyyy && startMm && startDd) 
-        ? `${startYyyy}-${startMm.padStart(2, '0')}-${startDd.padStart(2, '0')}`
-        : null;
-      
-      const endDate = (endYyyy && endMm && endDd)
-        ? `${endYyyy}-${endMm.padStart(2, '0')}-${endDd.padStart(2, '0')}`
-        : null;
-
-      // Validación de Seguridad: Rango de fechas permitido (Año actual o siguiente)
-      const currentYear = new Date().getFullYear();
-      const maxYear = currentYear + 1;
-
-      const validateYear = (yyyy: string, label: string) => {
-        if (!yyyy) return true;
-        const year = parseInt(yyyy);
-        if (isNaN(year)) return true;
-        if (year < currentYear) {
-          Alert.alert('Fecha inválida', `La ${label} no puede ser de un año anterior (${currentYear}).`);
-          return false;
-        }
-        if (year > maxYear) {
-          Alert.alert('Fecha inválida', `La ${label} no puede ser posterior al año ${maxYear}.`);
-          return false;
-        }
-        return true;
-      };
-
-      if (!validateYear(startYyyy, 'fecha de inicio') || !validateYear(endYyyy, 'fecha de fin')) {
-        setLoading(false);
-        return;
-      }
-
-      // 1. Payload de Campaña
-      let numericSpent = null;
-      if (spent) {
-        numericSpent = parseFloat(spent.replace(',', '.'));
-        if (isNaN(numericSpent)) numericSpent = null;
-      }
-
+      // Se envían todos los campos: el backend reemplaza la fila completa en el PUT,
+      // así un presupuesto existente no se pierde al editar.
       const campaignPayload = {
         id_company: Number(companyId),
         name: name.trim(),
         description: description.trim() || null,
-        status: status,
+        status,
         start_date: startDate,
         end_date: endDate,
-        spent: numericSpent,
+        spent: numericSpent ?? 0,
+        budget: numericBudget ?? 0,
       };
-      console.log("CREATE CAMPAIGN PAYLOAD:", campaignPayload);
 
-      // 2. Guardar Campaña
-      let newCampaignId: number | null = null;
+      let savedId: number | null = campaignId;
       if (campaignId) {
         await campaignsApi.update(campaignId, campaignPayload);
-        newCampaignId = campaignId;
       } else {
         const res: any = await campaignsApi.create(campaignPayload);
-        if (res && (res.id_campaign || res.id)) {
-          newCampaignId = res.id_campaign || res.id;
+        savedId = res?.id_campaign ? Number(res.id_campaign) : null;
+        if (!savedId) throw new Error('El servidor no devolvió el identificador de la campaña.');
+      }
+
+      // Canal + enlace de seguimiento. Si fallan, la campaña ya quedó guardada.
+      let linkWarning = '';
+      try {
+        const idChannel = await resolveChannelId(channelName);
+        const linkPayload = { id_campaign: savedId, id_channel: idChannel, destination: dest };
+        if (existingLink) {
+          const changed = existingLink.id_channel !== idChannel || !existingLink.destination.startsWith(dest);
+          if (changed) await trackingLinksApi.update(existingLink.id_link, linkPayload);
         } else {
-          // Fallback: intentar encontrar la campaña recién creada por nombre
-          try {
-            const allCampaigns: any = await campaignsApi.list();
-            const list = Array.isArray(allCampaigns) ? allCampaigns : (allCampaigns?.response || []);
-            const justCreated = list.find((c: any) => c.name === campaignPayload.name && Number(c.id_company) === Number(campaignPayload.id_company));
-            if (justCreated) {
-              newCampaignId = justCreated.id_campaign;
-            }
-          } catch (err) {
-            console.log("No se pudo obtener id de campaña creada:", err);
-          }
+          await trackingLinksApi.create(linkPayload);
         }
+      } catch (linkErr: any) {
+        linkWarning = `\n\nNo se pudo guardar el enlace de seguimiento: ${linkErr?.message || 'error desconocido'}.`;
       }
 
-      // 3. Payload de Canal
-      if (channelName.trim()) {
-        const channelPayload = {
-          name: channelName.trim(),
-          description: channelDescription.trim() || null,
-        };
-        try {
-          await channelsApi.createChannel(channelPayload);
-        } catch (channelErr) {
-          console.log("Error creating channel, continuing...", channelErr);
-        }
-      }
-
-      // 4. Crear link trackeable inicial (solo en creación)
-      if (!campaignId && newCampaignId) {
-        try {
-          await trackingLinksApi.create({
-            id_campaign: newCampaignId,
-            destination: 'https://analitika.com',
-          });
-          console.log("Link trackeable creado automáticamente para campaña:", newCampaignId);
-        } catch (linkErr) {
-          console.log("Error creating initial link:", linkErr);
-        }
-      }
-
-      // 5. Vincular campaña externa de Meta Ads (si aplica para Owner)
-      if (isOwner && channelName === 'Meta' && activeConnection && newCampaignId) {
-        try {
-          if (selectedExternalId) {
-            await adConnectionsApi.mapExternal(newCampaignId, {
-              id_connection: activeConnection.id_connection,
-              external_campaign_id: selectedExternalId,
-              external_campaign_name: selectedExternalName || undefined,
-            });
-            console.log("Campaña vinculada exitosamente a Meta Ads:", selectedExternalId);
-          } else if (campaignId) {
-            // Si el usuario desvinculó en edición
-            await adConnectionsApi.deleteMapping(campaignId);
-          }
-        } catch (mapErr) {
-          console.log("Error al mapear campaña externa:", mapErr);
-        }
-      }
-
-      Alert.alert('¡Listo!', `Campaña ${campaignId ? 'actualizada' : 'creada'} exitosamente.`, [
+      Alert.alert('Listo', `Campaña ${campaignId ? 'actualizada' : 'creada'} correctamente.${linkWarning}`, [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error: any) {
-      console.log("CREATE CAMPAIGN ERROR:", error);
-      Alert.alert('Error', error.message || 'No se pudo completar la operación.');
+      Alert.alert('Error', error?.message || 'No se pudo completar la operación.');
     } finally {
       setLoading(false);
     }
@@ -492,7 +406,7 @@ export default function CreateCampaignScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: themeColors.primary }]} numberOfLines={2}>
-          {name.trim() ? name : `Nombre de la\ncampaña`}
+          {name.trim() ? name : campaignId ? 'Editar campaña' : 'Nueva campaña'}
         </Text>
 
 
@@ -521,50 +435,6 @@ export default function CreateCampaignScreen() {
           </View>
         )}
 
-        {/* Plantillas */}
-        {!campaignId && (
-          <View style={{ marginBottom: spacing.lg }}>
-            <Text style={[styles.fieldLabel, { color: themeColors.textSecondary, marginBottom: spacing.sm }]}>Plantilla de Estrategia Integrada</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md }}>
-              <TouchableOpacity
-                style={[styles.templateBtn, { backgroundColor: themeColors.bgCard }]}
-                onPress={() => {
-                  setName(`Campaña 360° - ${new Date().toLocaleString('default', { month: 'short' })}`);
-                  setDescription("Estrategia unificada integrando Posts en Feed, Reels de IG/FB y TikToks.");
-                  setChannelName("Meta");
-                }}
-              >
-                <Ionicons name="planet-outline" size={20} color={themeColors.primary} />
-                <Text style={[styles.templateBtnText, { color: themeColors.textPrimary }]}>360° (Posts + Reels + TikToks)</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.templateBtn, { backgroundColor: themeColors.bgCard }]}
-                onPress={() => {
-                  setName(`Vídeo Viral - ${new Date().toLocaleString('default', { month: 'short' })}`);
-                  setDescription("Enfoque intensivo en contenido audiovisual de formato corto (Reels + TikToks).");
-                  setChannelName("TikTok");
-                }}
-              >
-                <Ionicons name="videocam-outline" size={20} color={themeColors.primary} />
-                <Text style={[styles.templateBtnText, { color: themeColors.textPrimary }]}>Vídeo Short (Reels + TikToks)</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.templateBtn, { backgroundColor: themeColors.bgCard }]}
-                onPress={() => {
-                  setName(`Social Feed - ${new Date().toLocaleString('default', { month: 'short' })}`);
-                  setDescription("Combinación estratégica de carruseles informativos y Reels de demostración.");
-                  setChannelName("Meta");
-                }}
-              >
-                <Ionicons name="images-outline" size={20} color={themeColors.primary} />
-                <Text style={[styles.templateBtnText, { color: themeColors.textPrimary }]}>Social Feed (Posts + Reels)</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        )}
-
         {/* Nombre */}
         <TextInput
           style={[styles.input, { backgroundColor: themeColors.bgCard, color: themeColors.textPrimary }]}
@@ -577,7 +447,7 @@ export default function CreateCampaignScreen() {
         {/* Descripción */}
         <TextInput
           style={[styles.input, styles.textArea, { backgroundColor: themeColors.bgCard, color: themeColors.textPrimary }]}
-          placeholder="Descripcion"
+          placeholder="Descripción (se muestra en la página de aterrizaje)"
           placeholderTextColor={themeColors.textMuted}
           value={description}
           onChangeText={setDescription}
@@ -593,7 +463,7 @@ export default function CreateCampaignScreen() {
           onPress={() => setShowStatusModal(true)}
         >
           <Text style={[styles.selectorText, { color: themeColors.textPrimary }, !status && { color: themeColors.textMuted }]}>
-            {status || 'Estado'}
+            {status ? `Estado: ${statusLabel(status)}` : 'Estado'}
           </Text>
           <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
         </TouchableOpacity>
@@ -621,7 +491,7 @@ export default function CreateCampaignScreen() {
                     { color: themeColors.textPrimary },
                     status === opt && { color: themeColors.primary, fontWeight: typography.bold },
                   ]}>
-                    {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                    {statusLabel(opt)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -631,7 +501,7 @@ export default function CreateCampaignScreen() {
 
         {/* Datos del Canal */}
         <View style={[styles.divider, { backgroundColor: themeColors.borderDivider }]} />
-        <Text style={[styles.sectionTitle, { color: themeColors.primary }]}>Datos del Canal (Opcional)</Text>
+        <Text style={[styles.sectionTitle, { color: themeColors.primary }]}>Canal y destino</Text>
         
         <TouchableOpacity
           style={[styles.selectorRow, { backgroundColor: themeColors.bgCard, marginBottom: spacing.md }]}
@@ -639,7 +509,7 @@ export default function CreateCampaignScreen() {
           onPress={() => setShowChannelModal(true)}
         >
           <Text style={[styles.selectorText, { color: themeColors.textPrimary }, !channelName && { color: themeColors.textMuted }]}>
-            {PREDEFINED_CHANNELS.find(c => c.value === channelName)?.label || 'Seleccionar Canal'}
+            {PREDEFINED_CHANNELS.find(c => c.value === channelName)?.label || channelName || 'Canal de difusión (opcional)'}
           </Text>
           <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
         </TouchableOpacity>
@@ -686,136 +556,22 @@ export default function CreateCampaignScreen() {
           multiline
         />
 
-        {/* ── VINCULACIÓN CON META ADS (Solo Owner si el canal es Meta y hay conexión activa) ── */}
-        {isOwner && channelName === 'Meta' && activeConnection && (
-          <View style={[styles.externalLinkCard, { backgroundColor: isDark ? '#1E293B' : '#F5F3FF', borderColor: themeColors.primary }]}>
-            <View style={styles.externalLinkHeader}>
-              <View style={[styles.providerBadgeMini, { backgroundColor: themeColors.primary }]}>
-                <Text style={styles.providerBadgeMiniText}>META ADS</Text>
-              </View>
-              <Text style={[styles.externalSectionTitle, { color: themeColors.primary }]}>
-                Vincular con campaña de Meta Ads
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.selectorRow, { backgroundColor: themeColors.bgCard, marginBottom: spacing.sm }]}
-              activeOpacity={0.7}
-              onPress={() => setShowExternalModal(true)}
-              disabled={loadingExternalCampaigns}
-            >
-              {loadingExternalCampaigns ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <ActivityIndicator size="small" color={themeColors.primary} />
-                  <Text style={{ color: themeColors.textSecondary, fontSize: typography.sizeSm }}>Cargando campañas de Meta...</Text>
-                </View>
-              ) : (
-                <Text
-                  style={[
-                    styles.selectorText,
-                    { color: themeColors.textPrimary },
-                    !selectedExternalId && { color: themeColors.textMuted },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {selectedExternalName || (selectedExternalId ? `ID: ${selectedExternalId}` : 'Seleccionar campaña de Meta Ads')}
-                </Text>
-              )}
-              <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
-            </TouchableOpacity>
-
-            {/* Modal selector de campaña externa */}
-            <Modal visible={showExternalModal} transparent animationType="fade">
-              <TouchableOpacity
-                style={styles.modalOverlay}
-                activeOpacity={1}
-                onPress={() => setShowExternalModal(false)}
-              >
-                <View style={[styles.modalContent, { backgroundColor: themeColors.bgPage, maxHeight: '75%' }]}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
-                    <Text style={[styles.modalTitle, { color: themeColors.primary, marginBottom: 0 }]}>Campañas en Meta Ads</Text>
-                    <TouchableOpacity onPress={() => setShowExternalModal(false)}>
-                      <Ionicons name="close" size={24} color={themeColors.textPrimary} />
-                    </TouchableOpacity>
-                  </View>
-                  
-                  <ScrollView showsVerticalScrollIndicator={false}>
-                    <TouchableOpacity
-                      style={[styles.modalOption, !selectedExternalId && { backgroundColor: isDark ? '#334155' : '#EDE9FE' }]}
-                      onPress={() => {
-                        setSelectedExternalId('');
-                        setSelectedExternalName('');
-                        setShowExternalModal(false);
-                      }}
-                    >
-                      <Text style={[styles.modalOptionText, { color: themeColors.textPrimary, fontStyle: 'italic' }]}>
-                        (Sin vincular a Meta Ads)
-                      </Text>
-                    </TouchableOpacity>
-
-                    {externalCampaigns.length === 0 ? (
-                      <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-                        <Text style={{ color: themeColors.textMuted, textAlign: 'center' }}>
-                          No se encontraron campañas en la cuenta conectada.
-                        </Text>
-                      </View>
-                    ) : (
-                      externalCampaigns.map((c) => (
-                        <TouchableOpacity
-                          key={c.id}
-                          style={[
-                            styles.modalOption,
-                            selectedExternalId === c.id && { backgroundColor: isDark ? '#334155' : '#EDE9FE' }
-                          ]}
-                          onPress={() => {
-                            setSelectedExternalId(c.id);
-                            setSelectedExternalName(c.name);
-                            setShowExternalModal(false);
-                          }}
-                        >
-                          <Text style={[
-                            styles.modalOptionText,
-                            { color: themeColors.textPrimary },
-                            selectedExternalId === c.id && { color: themeColors.primary, fontWeight: typography.bold }
-                          ]}>
-                            {c.name}
-                          </Text>
-                          <Text style={{ fontSize: 11, color: themeColors.textMuted, textAlign: 'center', marginTop: 2 }}>
-                            ID: {c.id} {c.objective ? `• ${c.objective}` : ''}
-                          </Text>
-                        </TouchableOpacity>
-                      ))
-                    )}
-                  </ScrollView>
-                </View>
-              </TouchableOpacity>
-            </Modal>
-
-            {/* Toggle Sincronización automática (solo si se vinculó) */}
-            {selectedExternalId ? (
-              <View style={styles.syncToggleRow}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={[styles.syncToggleLabel, { color: themeColors.textPrimary }]}>
-                    Sincronización automática
-                  </Text>
-                  <Text style={[styles.syncToggleSub, { color: themeColors.textSecondary }]}>
-                    Gasto e impresiones actualizados desde Meta
-                  </Text>
-                </View>
-                <Switch
-                  value={syncEnabled}
-                  onValueChange={setSyncEnabled}
-                  trackColor={{ false: '#CBD5E1', true: themeColors.primary }}
-                  thumbColor={Platform.OS === 'ios' ? '#fff' : syncEnabled ? '#fff' : '#f4f3f4'}
-                />
-              </View>
-            ) : null}
-
-            <Text style={[styles.helperText, { color: themeColors.textSecondary }]}>
-              Si vinculas tu campaña, el gasto y las impresiones se actualizarán automáticamente desde Meta Ads.
-            </Text>
-          </View>
-        )}
+        <View style={styles.fieldGroup}>
+          <Text style={[styles.fieldLabel, { color: themeColors.textSecondary }]}>URL de destino *</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: themeColors.bgCard, color: themeColors.textPrimary, marginBottom: 0 }]}
+            placeholder="https://tusitio.com/landing"
+            placeholderTextColor={themeColors.textMuted}
+            value={destination}
+            onChangeText={setDestination}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+          />
+          <Text style={[styles.helperText, { color: themeColors.textMuted }]}>
+            Cada visita al enlace de seguimiento registra un clic y redirige aquí. Si no incluye parámetros UTM, el servidor los añade.
+          </Text>
+        </View>
 
         {/* Fecha inicio */}
         <DateGroup
@@ -832,11 +588,12 @@ export default function CreateCampaignScreen() {
         />
 
         {/* Gasto */}
-        <MoneyInput label="Gasto acumulado" value={spent} onChange={setSpent} />
+        <MoneyInput label="Presupuesto total" value={budget} onChange={setBudget} />
+        <MoneyInput label="Inversión ejecutada (para CPC, CPA y ROI)" value={spent} onChange={setSpent} />
 
         {/* Generar Link Trackeable */}
         <View style={styles.fieldGroup}>
-          <Text style={[styles.fieldLabel, { color: themeColors.textSecondary }]}>Link Trackeable</Text>
+          <Text style={[styles.fieldLabel, { color: themeColors.textSecondary }]}>Enlace de seguimiento</Text>
           <View style={[styles.linkBox, { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, backgroundColor: themeColors.bgCard }]}>
             {trackUrl ? (
               <>
@@ -847,7 +604,7 @@ export default function CreateCampaignScreen() {
                   style={{ padding: spacing.sm, backgroundColor: isDark ? '#334155' : '#EDE9FE', borderRadius: radii.md }}
                   onPress={async () => {
                     await Clipboard.setStringAsync(trackUrl);
-                    Alert.alert('¡Copiado!', 'El link ha sido copiado al portapapeles.');
+                    Alert.alert('Copiado', 'El enlace se copió al portapapeles.');
                   }}
                 >
                   <Ionicons name="copy-outline" size={20} color={themeColors.primary} />
@@ -855,7 +612,7 @@ export default function CreateCampaignScreen() {
               </>
             ) : (
                 <Text style={{ flex: 1, color: themeColors.textMuted, fontSize: typography.sizeSm, fontStyle: 'italic' }}>
-                    {campaignId ? 'No se encontró link trackeable' : 'El link se generará automáticamente al crear la campaña.'}
+                    {campaignId ? 'Se generará al guardar con la URL de destino.' : 'Se generará automáticamente al crear la campaña.'}
                   </Text>
             )}
           </View>
@@ -964,23 +721,6 @@ const styles = StyleSheet.create({
   placeholder: {
     color: palette.purple3,
   },
-  templateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radii.md,
-    gap: spacing.sm,
-    shadowColor: palette.purple2,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  templateBtnText: {
-    fontSize: typography.sizeMd,
-    fontWeight: typography.semibold,
-  },
 
   /* Date group */
   fieldGroup: {
@@ -996,6 +736,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   dateInput: {
+    // flexBasis/minWidth 0: sin esto el campo AAAA se salía del ancho de pantalla
+    flexBasis: 0,
+    minWidth: 0,
     backgroundColor: colors.bgCard,
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
@@ -1118,49 +861,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  /* Vinculación Meta Ads */
-  externalLinkCard: {
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  externalLinkHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  providerBadgeMini: {
-    paddingVertical: 2,
-    paddingHorizontal: spacing.xs + 2,
-    borderRadius: radii.sm,
-  },
-  providerBadgeMiniText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: typography.bold,
-    letterSpacing: 0.5,
-  },
-  externalSectionTitle: {
-    fontSize: typography.sizeSm,
-    fontWeight: typography.bold,
-  },
-  syncToggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  syncToggleLabel: {
-    fontSize: typography.sizeSm,
-    fontWeight: typography.semibold,
-  },
-  syncToggleSub: {
-    fontSize: typography.sizeXs,
-    marginTop: 1,
-  },
   helperText: {
     fontSize: typography.sizeXs,
     fontStyle: 'italic',

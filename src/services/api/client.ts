@@ -1,7 +1,7 @@
 // src/services/api/client.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { API_BASE_URL, API_TIMEOUT, TOKEN_KEY } from './config';
 import type { ApiError } from './types';
 
@@ -133,7 +133,6 @@ export async function saveToken(token: string): Promise<void> {
 export async function saveUser(user: any): Promise<void> {
   memoryUser = user;
   try {
-    console.log("GUARDANDO USUARIO EN CACHE SEGURO:", user);
     const userStr = JSON.stringify(user);
     await setSecureItem(USER_KEY, userStr);
     await setSecureItem(CURRENT_USER_KEY, userStr);
@@ -196,6 +195,22 @@ export function _resetMemoryCache(): void {
   migrationCompleted = false;
 }
 
+/** Convierte el `detail` de FastAPI (texto o lista de validaciones 422) en un mensaje legible. */
+function readErrorMessage(data: any): string {
+  const detail = data?.detail ?? data?.message ?? data?.error;
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((e: any) => {
+        const field = Array.isArray(e?.loc) ? e.loc.filter((x: any) => x !== 'body').join('.') : '';
+        return field ? `${field}: ${e?.msg}` : String(e?.msg ?? '');
+      })
+      .filter(Boolean)
+      .join(' · ') || 'Datos inválidos';
+  }
+  return 'Ocurrió un error en la petición';
+}
+
 export async function request<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -217,8 +232,6 @@ export async function request<T>(
 
   try {
     const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-    console.log("REQUEST URL", url);
-    console.log("REQUEST OPTIONS", options);
 
     const response = await fetch(url, {
       ...options,
@@ -227,8 +240,6 @@ export async function request<T>(
     });
 
     const text = await response.text();
-    console.log("RESPONSE STATUS", response.status);
-    console.log("RESPONSE TEXT", text);
 
     let data: any = null;
     try {
@@ -239,11 +250,7 @@ export async function request<T>(
 
     if (!response.ok) {
       const error: ApiError = {
-        message:
-          data?.detail ||
-          data?.message ||
-          data?.error ||
-          'Ocurrió un error en la petición',
+        message: readErrorMessage(data),
         status: response.status,
         details: data,
       };

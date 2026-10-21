@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "analitika-app",
+    "name": "Analitika",
     "slug": "analitika-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,7 @@
     "scheme": "analitikaapp",
     "userInterfaceStyle": "automatic",
     "extra": {
-      "apiUrl": "http://192.168.18.13:8000"
+      "apiUrl": "https://analitika-production.up.railway.app"
     },
     "ios": {
       "supportsTablet": true
@@ -18,7 +18,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",

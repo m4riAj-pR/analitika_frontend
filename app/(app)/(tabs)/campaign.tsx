@@ -17,12 +17,13 @@ import * as Clipboard from 'expo-clipboard';
 import { Swipeable } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 
-import { colors, spacing, typography, shadows, radii } from '@/src/theme/colors';
+import { typography, shadows, radii } from '@/src/theme/colors';
 import { useTheme } from '@/src/ThemeContext';
 import AccountAvatar from '@/src/components/AccountAvatar';
 import { useProfile } from '@/src/hooks/useProfile';
 import { useCampaigns } from '@/src/hooks/useCampaigns';
-import { useAdConnections } from '@/src/hooks/useAdConnections';
+import { getMetricas } from '@/src/services/api/stats';
+import { formatInt, formatMoney, formatPct, statusLabel } from '@/src/utils/format';
 import { trackingLinksApi } from '@/src/services/api/tracking';
 import { campaignsApi } from '@/src/services/api/campaign';
 import { Campaign } from '@/src/services/api/types';
@@ -38,7 +39,7 @@ function EmptyState() {
       </View>
       <Text style={[emptyStyles.title, { color: themeColors.textPrimary }]}>No hay campañas</Text>
       <Text style={[emptyStyles.subtitle, { color: themeColors.textSecondary }]}>
-        Comienza creando tu primera campaña integrada con Posts, Reels y TikToks.
+        Crea tu primera campaña para obtener su enlace de seguimiento y empezar a medir clics y conversiones.
       </Text>
       <TouchableOpacity
         style={[emptyStyles.cta, { backgroundColor: themeColors.primary }]}
@@ -62,17 +63,6 @@ export default function CampaignScreen() {
 
   const isOwner = profile?.id_role === 1 || profile?.id_role === 2;
 
-  // Meta API Connections Hook
-  const {
-    connections,
-    loading: loadingConns,
-    connecting: connectingMeta,
-    syncingId,
-    connectMeta,
-    disconnectConnection,
-    triggerSync,
-  } = useAdConnections();
-
   const [linksMap, setLinksMap] = useState<Record<number, string>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [toast, setToast] = useState('');
@@ -80,6 +70,18 @@ export default function CampaignScreen() {
   // Comparador de Campañas
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
+  const [compareStats, setCompareStats] = useState<Record<number, any>>({});
+  const [loadingCompare, setLoadingCompare] = useState(false);
+
+  const openCompare = async () => {
+    setShowCompareModal(true);
+    setLoadingCompare(true);
+    const entries = await Promise.all(
+      selectedForCompare.map(async (id) => [id, await getMetricas(id).catch(() => null)] as const),
+    );
+    setCompareStats(Object.fromEntries(entries));
+    setLoadingCompare(false);
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -98,24 +100,18 @@ export default function CampaignScreen() {
     }, [reload])
   );
 
+  // Una sola consulta de links (en vez de una por campaña); se usa el primero de cada campaña
   useEffect(() => {
-    const fetchLinks = async () => {
-      if (Array.isArray(campaigns)) {
+    if (!Array.isArray(campaigns) || campaigns.length === 0) return;
+    trackingLinksApi.getAll()
+      .then((links) => {
         const newMap: Record<number, string> = {};
-        for (const camp of campaigns) {
-          if (camp.id_campaign) {
-            try {
-              const links = await trackingLinksApi.listByCampaign(camp.id_campaign);
-              if (links && links.length > 0) {
-                newMap[camp.id_campaign] = trackingLinksApi.publicTrackUrl(Number(links[0].id_link));
-              }
-            } catch (e) {}
-          }
-        }
+        (Array.isArray(links) ? links : []).forEach((l) => {
+          if (newMap[l.id_campaign] == null) newMap[l.id_campaign] = trackingLinksApi.publicTrackUrl(Number(l.id_link));
+        });
         setLinksMap(newMap);
-      }
-    };
-    fetchLinks();
+      })
+      .catch(() => {});
   }, [campaigns]);
 
   const activeCampaigns = Array.isArray(campaigns)
@@ -125,46 +121,22 @@ export default function CampaignScreen() {
     ? campaigns.filter(c => String(c.status).toLowerCase() !== 'active')
     : [];
 
-  const copyLink = async (id_campaign: number | null) => {
-    if (id_campaign === null) {
-      Alert.alert('Error', 'Campaña sin ID válido');
+  const copyLink = async (camp: Campaign) => {
+    const link = camp.id_campaign != null ? linksMap[camp.id_campaign] : undefined;
+    if (!link) {
+      // No se genera un link con un destino inventado: se pide definir la URL real
+      Alert.alert(
+        'Sin enlace de seguimiento',
+        'Esta campaña aún no tiene enlace. Edítala e indica la URL de destino para generarlo.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Editar campaña', onPress: () => router.push({ pathname: '/(app)/create', params: { id: String(camp.id_campaign) } }) },
+        ],
+      );
       return;
     }
-
-    const existingLink = linksMap[id_campaign];
-    if (existingLink) {
-      await Clipboard.setStringAsync(existingLink);
-      showToast('Link copiado al portapapeles');
-      return;
-    }
-
-    try {
-      let links = await trackingLinksApi.listByCampaign(id_campaign);
-      if (!links || links.length === 0) {
-        const res: any = await trackingLinksApi.create({
-          id_campaign: id_campaign,
-          destination: 'https://analitika.com',
-        });
-        if (res && res.id_link) {
-          const trackUrl = trackingLinksApi.publicTrackUrl(Number(res.id_link));
-          setLinksMap(prev => ({ ...prev, [id_campaign]: trackUrl }));
-          await Clipboard.setStringAsync(trackUrl);
-          showToast('Link generado y copiado');
-          return;
-        }
-        links = await trackingLinksApi.listByCampaign(id_campaign);
-      }
-
-      if (links && links.length > 0) {
-        const id_link = links[0].id_link;
-        const trackUrl = trackingLinksApi.publicTrackUrl(Number(id_link));
-        setLinksMap(prev => ({ ...prev, [id_campaign]: trackUrl }));
-        await Clipboard.setStringAsync(trackUrl);
-        showToast('Link copiado');
-      }
-    } catch (err: any) {
-      Alert.alert('Error', `No se pudo copiar el link: ${err.message || 'Error'}`);
-    }
+    await Clipboard.setStringAsync(link);
+    showToast('Enlace copiado al portapapeles');
   };
 
   const handleDelete = (camp: Campaign) => {
@@ -246,33 +218,11 @@ export default function CampaignScreen() {
           </View>
         </View>
 
-        {/* Desglose Analítico Integrado: Posts, Reels, TikToks */}
-        <View style={styles.integratedPillsRow}>
-          <View style={[styles.integratedPill, { backgroundColor: isDark ? '#334155' : '#FFF' }]}>
-            <Ionicons name="image-outline" size={14} color="#8B5CF6" />
-            <Text style={[styles.integratedPillText, { color: themeColors.textPrimary }]}>Posts Feed</Text>
-          </View>
-          <View style={[styles.integratedPill, { backgroundColor: isDark ? '#334155' : '#FFF' }]}>
-            <Ionicons name="videocam-outline" size={14} color="#EC4899" />
-            <Text style={[styles.integratedPillText, { color: themeColors.textPrimary }]}>Reels IG/FB</Text>
-          </View>
-          <View style={[styles.integratedPill, { backgroundColor: isDark ? '#334155' : '#FFF' }]}>
-            <Ionicons name="logo-tiktok" size={13} color="#000" />
-            <Text style={[styles.integratedPillText, { color: themeColors.textPrimary }]}>TikToks</Text>
-          </View>
-        </View>
-
-        {/* Indicador de Origen Meta API si existe */}
-        {camp.data_source === 'api_meta' && (
-          <View style={styles.metaBadgeInline}>
-            <Ionicons name="sync-circle" size={16} color="#10B981" style={{ marginRight: 4 }} />
-            <Text style={styles.metaBadgeInlineText}>Sincronizado con Meta Ads (CTR: {camp.ctr_real ? `${camp.ctr_real}%` : 'N/A'})</Text>
-          </View>
-        )}
-
-        <TouchableOpacity style={[styles.copyCapsule, { backgroundColor: isDark ? '#334155' : '#FFF' }]} onPress={() => copyLink(campId)}>
+        <TouchableOpacity style={[styles.copyCapsule, { backgroundColor: isDark ? '#334155' : '#FFF' }]} onPress={() => copyLink(camp)}>
           <Ionicons name="copy-outline" size={18} color={themeColors.primary} />
-          <Text style={[styles.copyCapsuleText, { color: themeColors.primary }]}>Copiar enlace de seguimiento</Text>
+          <Text style={[styles.copyCapsuleText, { color: themeColors.primary }]}>
+            {linksMap[campId] ? 'Copiar enlace de seguimiento' : 'Generar enlace de seguimiento'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -293,14 +243,14 @@ export default function CampaignScreen() {
       <View style={styles.header}>
         <View>
           <Text style={[styles.headerTitle, { color: themeColors.primary }]}>Campañas</Text>
-          <Text style={[styles.headerSub, { color: themeColors.textSecondary }]}>Gestión y vinculación publicitaria</Text>
+          <Text style={[styles.headerSub, { color: themeColors.textSecondary }]}>Gestión y enlaces de seguimiento</Text>
         </View>
 
         <View style={styles.headerActions}>
           {selectedForCompare.length >= 2 && (
             <TouchableOpacity
               style={[styles.compareTopBtn, { backgroundColor: '#8B5CF6' }]}
-              onPress={() => setShowCompareModal(true)}
+              onPress={openCompare}
             >
               <Ionicons name="stats-chart" size={16} color="#fff" style={{ marginRight: 4 }} />
               <Text style={styles.compareTopBtnText}>Comparar ({selectedForCompare.length})</Text>
@@ -314,79 +264,11 @@ export default function CampaignScreen() {
             <Ionicons name="add" size={24} color="#FFF" />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.push('/account')}>
+          <TouchableOpacity onPress={() => router.push('/(app)/(tabs)/account')}>
             <AccountAvatar size={38} />
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* ── SECCIÓN DE CONEXIÓN API META (Exclusivo Owner en Módulo de Campañas) ── */}
-      {isOwner && (
-        <View style={styles.metaModuleWrapper}>
-          <View style={[styles.metaCard, { backgroundColor: isDark ? '#1E293B' : '#F5F3FF', borderColor: themeColors.primary }]}>
-            <View style={styles.metaCardHeader}>
-              <View style={styles.metaBadge}>
-                <Ionicons name="logo-facebook" size={14} color="#fff" style={{ marginRight: 4 }} />
-                <Text style={styles.metaBadgeText}>META MARKETING API</Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.metaConnectBtn, { backgroundColor: themeColors.primary }, connectingMeta && { opacity: 0.7 }]}
-                onPress={connectMeta}
-                disabled={connectingMeta}
-              >
-                {connectingMeta ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons name="link" size={14} color="#fff" style={{ marginRight: 4 }} />
-                    <Text style={styles.metaConnectBtnText}>
-                      {connections.length > 0 ? 'Conectar otra cuenta' : 'Vincular Meta Ads'}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {connections.length === 0 ? (
-              <Text style={[styles.metaCardSub, { color: themeColors.textSecondary }]}>
-                Vincula tu cuenta publicitaria de Meta para sincronizar directamente el gasto, impresiones y CTR de tus anuncios de Facebook e Instagram en tus campañas.
-              </Text>
-            ) : (
-              <View style={styles.metaConnsList}>
-                {connections.map(c => (
-                  <View key={c.id_connection} style={[styles.metaConnItem, { backgroundColor: isDark ? '#334155' : '#FFF' }]}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.metaConnName, { color: themeColors.textPrimary }]} numberOfLines={1}>
-                        {c.account_name || 'Cuenta publicitaria Meta'}
-                      </Text>
-                      <Text style={[styles.metaConnId, { color: themeColors.textMuted }]}>ID: {c.external_account_id}</Text>
-                    </View>
-
-                    <TouchableOpacity
-                      style={[styles.metaSyncBtn, { borderColor: themeColors.primary }]}
-                      onPress={() => triggerSync(c.id_connection)}
-                      disabled={syncingId === c.id_connection}
-                    >
-                      {syncingId === c.id_connection ? (
-                        <ActivityIndicator size="small" color={themeColors.primary} />
-                      ) : (
-                        <Ionicons name="sync" size={16} color={themeColors.primary} />
-                      )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.metaDiscBtn}
-                      onPress={() => disconnectConnection(c.id_connection)}
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        </View>
-      )}
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center' }}>
@@ -422,7 +304,7 @@ export default function CampaignScreen() {
                           <Text style={[styles.listText, { color: themeColors.textPrimary }]} numberOfLines={1}>
                             {camp.name}
                           </Text>
-                          <Text style={{ fontSize: 11, color: themeColors.textMuted }}>Posts • Reels • TikToks</Text>
+                          <Text style={{ fontSize: 11, color: themeColors.textMuted }}>{statusLabel(camp.status)}</Text>
                         </View>
                         <View style={styles.listActions}>
                           <TouchableOpacity
@@ -464,31 +346,39 @@ export default function CampaignScreen() {
             </View>
 
             <Text style={[styles.compareSub, { color: themeColors.textSecondary }]}>
-              Comparativa directa del conjunto analítico (Posts, Reels, TikToks):
+              Métricas acumuladas de cada campaña desde su enlace de seguimiento.
             </Text>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingVertical: 10 }}>
-              {comparedCampaignsList.map((c) => (
-                <View key={c.id_campaign} style={[styles.compareColumn, { backgroundColor: isDark ? '#334155' : '#F8FAFC' }]}>
-                  <Text style={[styles.compareCampName, { color: themeColors.textPrimary }]} numberOfLines={2}>{c.name}</Text>
-                  
-                  <View style={styles.compareMetricBox}>
-                    <Text style={styles.compareMetricLabel}>Formato Principal</Text>
-                    <Text style={styles.compareMetricVal}>Posts + Reels + TikToks</Text>
-                  </View>
-
-                  <View style={styles.compareMetricBox}>
-                    <Text style={styles.compareMetricLabel}>CTR Estimado</Text>
-                    <Text style={[styles.compareMetricVal, { color: '#10B981' }]}>{c.ctr_real ? `${c.ctr_real}%` : 'Sincronizando'}</Text>
-                  </View>
-
-                  <View style={styles.compareMetricBox}>
-                    <Text style={styles.compareMetricLabel}>Origen de Datos</Text>
-                    <Text style={styles.compareMetricVal}>{c.data_source === 'api_meta' ? 'Meta Ads API' : 'Integrado'}</Text>
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
+            {loadingCompare ? (
+              <ActivityIndicator size="large" color={themeColors.primary} style={{ marginVertical: 30 }} />
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingVertical: 10 }}>
+                {comparedCampaignsList.map((c) => {
+                  const st = c.id_campaign != null ? compareStats[c.id_campaign] : null;
+                  const rows: [string, string][] = [
+                    ['Clics', formatInt(st?.clics)],
+                    ['Conversiones', formatInt(st?.conversiones)],
+                    ['Tasa de conversión', formatPct(st?.conversion_rate)],
+                    ...(st?.ingresos != null
+                      ? ([['Inversión', formatMoney(st.spent)], ['Ingresos', formatMoney(st.ingresos)], ['ROI', formatPct(st.roi)]] as [string, string][])
+                      : []),
+                  ];
+                  return (
+                    <View key={c.id_campaign} style={[styles.compareColumn, { backgroundColor: isDark ? '#334155' : '#F8FAFC' }]}>
+                      <Text style={[styles.compareCampName, { color: themeColors.textPrimary }]} numberOfLines={2}>{c.name}</Text>
+                      {st == null ? (
+                        <Text style={{ fontSize: 12, color: themeColors.textMuted }}>Sin métricas disponibles</Text>
+                      ) : rows.map(([label, value]) => (
+                        <View key={label} style={styles.compareMetricBox}>
+                          <Text style={styles.compareMetricLabel}>{label}</Text>
+                          <Text style={[styles.compareMetricVal, { color: themeColors.textPrimary }]}>{value}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
 
             <TouchableOpacity
               style={[styles.closeCompareBtn, { backgroundColor: themeColors.primary }]}
@@ -537,24 +427,6 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
   },
   compareTopBtnText: { color: '#fff', fontSize: 12, fontWeight: typography.bold },
-  metaModuleWrapper: { paddingHorizontal: 20, marginBottom: 12 },
-  metaCard: {
-    padding: 14,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-  },
-  metaCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  metaBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1877F2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.sm },
-  metaBadgeText: { color: '#fff', fontSize: 10, fontWeight: typography.bold },
-  metaConnectBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: radii.md },
-  metaConnectBtnText: { color: '#fff', fontSize: 12, fontWeight: typography.bold },
-  metaCardSub: { fontSize: 12, lineHeight: 16, marginTop: 4 },
-  metaConnsList: { gap: 8, marginTop: 8 },
-  metaConnItem: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: radii.md, gap: 8 },
-  metaConnName: { fontSize: 13, fontWeight: typography.bold },
-  metaConnId: { fontSize: 11 },
-  metaSyncBtn: { borderWidth: 1, padding: 6, borderRadius: radii.sm },
-  metaDiscBtn: { padding: 6 },
   scrollContent: { paddingHorizontal: 20 },
   activeSection: { marginBottom: 10 },
   inactiveSection: { borderRadius: radii.xl, padding: 18, marginBottom: 20 },
@@ -562,11 +434,6 @@ const styles = StyleSheet.create({
   activeCard: { borderRadius: radii.xl, padding: 18, marginBottom: 16 },
   activeCardTitle: { fontSize: 17, fontWeight: typography.bold },
   iconBtn: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  integratedPillsRow: { flexDirection: 'row', gap: 6, marginVertical: 10 },
-  integratedPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.sm, gap: 4 },
-  integratedPillText: { fontSize: 11, fontWeight: typography.medium },
-  metaBadgeInline: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  metaBadgeInlineText: { fontSize: 12, color: '#10B981', fontWeight: typography.bold },
   copyCapsule: { flexDirection: 'row', borderRadius: radii.lg, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   copyCapsuleText: { fontSize: 13, fontWeight: typography.medium, marginLeft: 8 },
   dashboardButton: { borderRadius: radii.md, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },

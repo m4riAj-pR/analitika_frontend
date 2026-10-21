@@ -75,7 +75,7 @@ export default function AdminCompanies() {
           <View style={[styles.statsContainer, { backgroundColor: isDark ? '#0F172A' : '#FAF9FE' }]}>
             <View style={styles.statsInfo}>
               <Text style={[styles.statsText, { color: themeColors.textSecondary }]}>{item.owners} Owners</Text>
-              <Text style={[styles.statsText, { color: themeColors.textSecondary }]}>{item.managements} managments</Text>
+              <Text style={[styles.statsText, { color: themeColors.textSecondary }]}>{item.managements} managers</Text>
             </View>
             
             <TouchableOpacity 

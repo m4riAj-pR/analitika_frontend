@@ -19,9 +19,7 @@ export interface Campaign {
   start_date: string | null;
   end_date: string | null;
   spent: number | string | null;
-  data_source?: 'api_meta' | 'manual' | string;
-  impressions?: number;
-  ctr_real?: number;
+  budget?: number | string | null;
 }
 
 export interface TrackingLink {
@@ -46,34 +44,48 @@ export interface ChannelPayload {
   description: string | null;
 }
 
+/**
+ * Fila de GET /analitika/campaigns/top. El backend devuelve `clics` y, solo para
+ * Owner/Super Admin, `ingresos`, `spent` y `beneficio` (a Manager se le filtran).
+ * `roi` se calcula en el cliente a partir de beneficio / spent.
+ */
 export interface TopCampaign {
   id_campaign: number;
   name: string;
-  clicks: number;
-  clics?: number; // fallback resilience
-  conversions: number;
-  conversiones?: number; // fallback resilience
-  roi: number;
-  ingresos?: number;
-  roas?: number;
-  cpa?: number;
-  data_source?: 'api_meta' | 'manual' | string;
-  impressions?: number;
-  ctr_real?: number;
-  /** Position in ranking after sorting */
+  clics: number;
+  ingresos?: number | null;
+  spent?: number | null;
+  beneficio?: number | null;
+  roi?: number | null;
   rankPosition?: number;
+}
+
+/** Métricas de GET /stats/{id_campaign}. Los campos financieros no llegan para Manager. */
+export interface CampaignStats {
+  clics: number;
+  conversiones: number;
+  conversion_rate: number;
+  aov?: number;
+  ingresos?: number;
+  spent?: number;
+  cpc?: number;
+  cpa?: number;
+  roi?: number;
+  roas?: number;
 }
 
 export interface User {
   id_user: number;
   id_person: number;
   id_role: number;
-  id_company: number;
+  id_company?: number | null;
+  company_name?: string | null;
+  role_name?: string;
   email: string;
   name?: string;
   first_name?: string; // backward-compat fallback from API
-  phone: string;
-  is_active: boolean;
+  phone?: string | null;
+  companies?: { id_company: number; name: string }[];
 }
 
 export interface Company {
@@ -82,53 +94,3 @@ export interface Company {
   tax_id: string;
   is_active: boolean;
 }
-
-export interface AdConnection {
-  id_connection: number;
-  id_company: number;
-  provider: 'meta' | string;
-  external_account_id: string;
-  account_name: string;
-  status: 'active' | 'expired' | 'revoked' | 'error';
-  status_message?: string | null;
-  connected_by?: number;
-  connected_at: string;
-  last_sync_at?: string | null;
-}
-
-export interface OAuthConnectResponse {
-  auth_url: string;
-  provider: string;
-  state: string;
-}
-
-export interface ExternalCampaignItem {
-  id: string;
-  name: string;
-  status?: string;
-  objective?: string;
-}
-
-export interface CampaignExternalMapping {
-  id_mapping: number;
-  id_campaign: number;
-  id_connection: number;
-  provider: string;
-  external_account_id: string;
-  external_campaign_id: string;
-  external_campaign_name?: string | null;
-  sync_enabled: boolean;
-  created_at?: string;
-  last_sync_at?: string | null;
-}
-
-export interface CampaignExternalMetric {
-  id_metric: number;
-  id_mapping: number;
-  metric_date: string;
-  impressions: number;
-  spend: number;
-  clicks: number;
-  synced_at: string;
-}
-

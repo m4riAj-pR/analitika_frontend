@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
-import { userCompanyApi } from '../services/api';
 import * as authService from '../services/api/auth';
 
 export function useProfile() {
@@ -13,49 +11,10 @@ export function useProfile() {
         try {
             setLoading(true);
             setError(null);
-            const response: any = await authService.me();
-            console.log("DEBUG: authService.me() devolvió:", response);
-            let user = response?.response || response;
-            console.log("DEBUG: user extraído de la respuesta:", user);
-
-            if (user) {
-                // 1. Intentar sacar el id_company directamente del array companies si existe
-                if (!user.id_company && Array.isArray(user.companies) && user.companies.length > 0) {
-                    user = { ...user, id_company: user.companies[0].id_company, company_name: user.companies[0].name };
-                }
-
-                // 2. Fallback: Buscar la empresa en la tabla intermedia user-company
-                if (!user.id_company && user.id_user) {
-                    try {
-                        const { userCompanyApi } = await import('../services/api');
-                        const ucResponse: any = await userCompanyApi.getAll();
-
-                        const userCompanies = Array.isArray(ucResponse) ? ucResponse : (ucResponse?.response || []);
-                        const relation = userCompanies.find((uc: any) => Number(uc.id_user) === Number(user.id_user));
-                        
-                        if (relation) {
-                            user = { 
-                                ...user, 
-                                id_company: Number(relation.id_company),
-                            };
-                            
-                            // Guardar en caché
-                            await authService.authApi.saveUser(user);
-                            console.log("Se encontró la relación en user-company y se guardó en caché:", user);
-                        } else {
-                            console.warn("No se encontró relación en user-company para el usuario:", user.id_user);
-                        }
-                    } catch (err) {
-                        Alert.alert("Error", "Ocurrió un problema al sincronizar la información de la empresa.");
-                    }
-                }
-            }
-
-            console.log("USEPROFILE RESOLVED USER:", user);
-            setProfile(user);
+            // me() ya devuelve el usuario normalizado con id_company y company_name
+            setProfile(await authService.me());
         } catch (err: any) {
-            Alert.alert("Error", "No se pudo cargar la información del perfil.");
-            setError(err.message || 'Error al cargar perfil');
+            setError(err?.message || 'Error al cargar perfil');
         } finally {
             setLoading(false);
         }
@@ -76,9 +35,9 @@ export function useProfile() {
             // Actualizar caché local
             const updatedUser = {
                 ...profile,
-                name: data.name || data.first_name || profile.name,
-                first_name: data.name || data.first_name || profile.first_name,
-                phone: data.phone || profile.phone,
+                name: payload.name || profile.name,
+                first_name: payload.name || profile.first_name,
+                phone: data.phone ?? profile.phone,
             };
             await authService.authApi.saveUser(updatedUser);
 
@@ -86,7 +45,6 @@ export function useProfile() {
             await fetchProfile();
             return updatedUser;
         } catch (err: any) {
-            Alert.alert("Error", "No se pudo actualizar el perfil.");
             throw err;
         } finally {
             setSaving(false);

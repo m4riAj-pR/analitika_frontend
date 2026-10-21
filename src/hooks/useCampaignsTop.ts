@@ -1,46 +1,46 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
 import { campaignsApi } from '../services/api/campaign';
 import { TopCampaign } from '../services/api/types';
 
 /**
- * Hook to fetch top campaigns from GET /analitika/campaigns/top.
- * The start_date/end_date params are kept for API compatibility 
- * but the actual endpoint may not use them.
+ * Ranking desde GET /analitika/campaigns/top. El backend ordena por clics y no admite
+ * filtro de fechas. El ROI se calcula aquí cuando el rol recibe datos financieros.
  */
-export function useCampaignsTop(_start_date?: string, _end_date?: string) {
+export function useCampaignsTop(limit = 10) {
     const [campaigns, setCampaigns] = useState<TopCampaign[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const fetchRanking = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            console.log("LOADING TOP CAMPAIGNS");
-            const response: any = await campaignsApi.getTop();
-            console.log("TOP CAMPAIGNS RESPONSE:", response);
-            const data = Array.isArray(response) ? response : (response?.data || response?.response || []);
-            // Sort by ROI descending
-            const sorted = data.sort((a: any, b: any) => {
-                const roiA = a.roi ?? 0;
-                const roiB = b.roi ?? 0;
-                return roiB - roiA;
-            });
-            // Assign rankPosition
-            const ranked = sorted.map((c: any, idx: number) => ({
-                ...c,
-                rankPosition: idx + 1,
-            }));
+            const response: any = await campaignsApi.getTop(limit);
+            const data: any[] = Array.isArray(response) ? response : [];
+            const ranked: TopCampaign[] = data
+                .map((c) => {
+                    const spent = c.spent != null ? Number(c.spent) : null;
+                    const profit = c.beneficio != null ? Number(c.beneficio) : null;
+                    return {
+                        id_campaign: Number(c.id_campaign),
+                        name: c.name,
+                        clics: Number(c.clics) || 0,
+                        ingresos: c.ingresos != null ? Number(c.ingresos) : null,
+                        spent,
+                        beneficio: profit,
+                        roi: spent && spent > 0 && profit != null ? (profit / spent) * 100 : null,
+                    };
+                })
+                .sort((a, b) => b.clics - a.clics)
+                .map((c, idx) => ({ ...c, rankPosition: idx + 1 }));
             setCampaigns(ranked);
         } catch (err: any) {
-            Alert.alert("Error", "No se pudo cargar el ranking de campañas.");
-            setError(err.message || 'Error al cargar el ranking');
+            setError(err?.message || 'No se pudo cargar el ranking');
             setCampaigns([]);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [limit]);
 
     useEffect(() => {
         fetchRanking();

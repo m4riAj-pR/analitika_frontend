@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   TextInput,
   RefreshControl,
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useProfile } from '@/src/hooks/useProfile';
@@ -22,11 +22,10 @@ import { useTheme } from '@/src/ThemeContext';
 
 export default function TeamManagementScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { profile } = useProfile();
   const { colors: themeColors, isDark } = useTheme();
 
-  const isOwner = profile?.id_role === 1 || profile?.id_role === 2;
+  const isOwner = profile?.id_role === 2;
   const [managers, setManagers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,8 +48,8 @@ export default function TeamManagementScreen() {
       const list = Array.isArray(allUsers) ? allUsers : (allUsers?.response || []);
       const filtered = list.filter((u: any) => u.id_role === 3);
       setManagers(filtered);
-    } catch (err) {
-      console.log('Error fetching team:', err);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'No se pudo cargar el equipo.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -73,6 +72,16 @@ export default function TeamManagementScreen() {
       Alert.alert('Campos requeridos', 'Por favor completa los datos del nuevo empleado.');
       return;
     }
+    if (newEmployee.password.length < 8) {
+      Alert.alert('Contraseña débil', 'La contraseña temporal debe tener al menos 8 caracteres.');
+      return;
+    }
+    // Nunca asignar a una empresa por defecto: el miembro quedaría en otra organización
+    const companyId = profile?.id_company ?? profile?.companies?.[0]?.id_company;
+    if (!companyId) {
+      Alert.alert('Empresa no detectada', 'Tu usuario no tiene una empresa asignada.');
+      return;
+    }
 
     try {
       setAdding(true);
@@ -85,15 +94,15 @@ export default function TeamManagementScreen() {
 
       if (personRes && (personRes.id_person || personRes.id)) {
         const personId = personRes.id_person || personRes.id;
-        // 2. Crear usuario con rol 3 (Management)
+        // 2. Crear usuario con rol 3 (Manager) en la empresa del Owner
         await usersApi.createUser({
           id_person: personId,
           id_role: 3,
-          id_company: profile?.id_company || 1,
+          id_company: Number(companyId),
           password_hash: newEmployee.password,
         });
 
-        Alert.alert('Éxito', 'Empleado (Management) registrado correctamente.');
+        Alert.alert('Éxito', 'Manager registrado correctamente. Comparte con esta persona su contraseña temporal.');
         setShowAddModal(false);
         setNewEmployee({ name: '', email: '', password: '' });
         fetchManagers();
@@ -118,8 +127,8 @@ export default function TeamManagementScreen() {
             try {
               await usersApi.deleteUser(id_user);
               fetchManagers();
-            } catch (err) {
-              Alert.alert('Error', 'No se pudo revocar el acceso al usuario.');
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'No se pudo revocar el acceso al usuario.');
             }
           },
         },
@@ -154,7 +163,7 @@ export default function TeamManagementScreen() {
         <View>
           <Text style={[styles.headerTitle, { color: themeColors.primary }]}>Gestión de Equipo</Text>
           <Text style={[styles.headerSub, { color: themeColors.textSecondary }]}>
-            Colaboradores y Managements
+            {profile?.company_name ? `Managers de ${profile.company_name}` : 'Managers de tu empresa'}
           </Text>
         </View>
         <TouchableOpacity
@@ -196,7 +205,7 @@ export default function TeamManagementScreen() {
           <View style={[styles.summaryCard, { backgroundColor: themeColors.bgCard }]}>
             <Ionicons name="people" size={24} color={themeColors.primary} />
             <Text style={[styles.summaryNum, { color: themeColors.textPrimary }]}>{managers.length}</Text>
-            <Text style={[styles.summaryLabel, { color: themeColors.textSecondary }]}>Managements Activos</Text>
+            <Text style={[styles.summaryLabel, { color: themeColors.textSecondary }]}>Managers</Text>
           </View>
           <View style={[styles.summaryCard, { backgroundColor: themeColors.bgCard }]}>
             <Ionicons name="key" size={24} color="#10B981" />
@@ -233,7 +242,7 @@ export default function TeamManagementScreen() {
                 </Text>
                 <View style={[styles.roleBadge, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
                   <View style={styles.roleDot} />
-                  <Text style={[styles.roleBadgeText, { color: themeColors.textSecondary }]}>Management</Text>
+                  <Text style={[styles.roleBadgeText, { color: themeColors.textSecondary }]}>Manager</Text>
                 </View>
               </View>
 

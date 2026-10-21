@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -24,6 +24,7 @@ import {
 import { useTheme } from '../../../src/ThemeContext';
 import { useCampaignsTop } from '../../../src/hooks/useCampaignsTop';
 import type { TopCampaign } from '../../../src/services/api/types';
+import { formatCompact, formatMoney } from '../../../src/utils/format';
 
 // ─── Podium icon ──────────────────────────────────────────────────────────────
 function PodiumIcon({ color = palette.purple3 }: { color?: string }) {
@@ -48,10 +49,7 @@ const podiumStyles = StyleSheet.create({
 function RankingCard({ item, rank, isManager, onPress }: { item: TopCampaign; rank: number; isManager: boolean; onPress: () => void }) {
   const { colors: themeColors, isDark } = useTheme();
   const isTop = rank === 1;
-  const accent = isTop ? themeColors.primary : 'transparent';
 
-  const formatNumber = (n?: number | null) =>
-    n == null ? '—' : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 
   return (
     <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={[
@@ -69,31 +67,21 @@ function RankingCard({ item, rank, isManager, onPress }: { item: TopCampaign; ra
 
       {/* info */}
       <View style={styles.cardInfo}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-          {item.data_source?.startsWith('api_') && (
-            <View style={styles.apiBadgeMini}>
-              <Text style={styles.apiBadgeMiniText}>Meta</Text>
-            </View>
-          )}
-        </View>
+        <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
         <View style={styles.metaRow}>
-          <Ionicons name="star" size={11} color="rgba(255,255,255,0.6)" />
-          <Text style={styles.metaText}>{formatNumber(item.clicks || item.clics)} clics</Text>
-          {item.impressions != null && item.impressions > 0 && item.ctr_real != null && (
-            <>
-              <Text style={styles.metaDot}>•</Text>
-              <Text style={styles.metaText}>CTR {Number(item.ctr_real).toFixed(1)}%</Text>
-            </>
-          )}
+          <Ionicons name="hand-left-outline" size={11} color="rgba(255,255,255,0.65)" />
+          <Text style={styles.metaText} numberOfLines={1}>
+            {formatCompact(item.clics)} clics{!isManager && item.ingresos != null ? ` · ${formatMoney(item.ingresos)}` : ''}
+          </Text>
         </View>
       </View>
 
       {/* ROI pill */}
       {item.roi != null && !isManager && (
-        <View style={[styles.roiPill, isTop && styles.roiPillTop]}>
+        <View style={[styles.roiPill, isTop && styles.roiPillTop]} accessibilityLabel={`ROI ${item.roi.toFixed(0)} por ciento`}>
+          <Text style={styles.roiCaption}>ROI</Text>
           <Text style={[styles.roiText, isTop && { color: isDark ? '#FFF' : palette.purple3 }]}>
-            {item.roi >= 0 ? '+' : ''}{item.roi.toFixed(0)}%
+            {item.roi >= 0 ? '+' : ''}{item.roi.toFixed(0)} %
           </Text>
         </View>
       )}
@@ -174,15 +162,7 @@ export default function RankingScreen() {
   const { profile } = useProfile();
   const isManager = profile?.id_role === 3;
 
-  // Rango: últimos 30 días
-  const { start_date, end_date } = useMemo(() => {
-    const now = new Date();
-    const end = now.toISOString().split('T')[0];
-    const start = new Date(now.setDate(now.getDate() - 30)).toISOString().split('T')[0];
-    return { start_date: start, end_date: end };
-  }, []);
-
-  const { campaigns, loading, error, reload } = useCampaignsTop(start_date, end_date);
+  const { campaigns, loading, error, reload } = useCampaignsTop(10);
   const [refreshing, setRefreshing] = React.useState(false);
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -197,9 +177,9 @@ export default function RankingScreen() {
       <View style={styles.header}>
         <View>
           <Text style={[styles.headerTitle, { color: themeColors.primary }]}>Top Campañas</Text>
-          <Text style={[styles.headerSub, { color: themeColors.textSecondary }]}>Últimos 30 días</Text>
+          <Text style={[styles.headerSub, { color: themeColors.textSecondary }]}>Ordenadas por clics registrados</Text>
         </View>
-        <TouchableOpacity style={[styles.avatarBtn, { backgroundColor: themeColors.bgCard }]} activeOpacity={0.75} onPress={() => router.push('/(app)/account' as any)}>
+        <TouchableOpacity style={[styles.avatarBtn, { backgroundColor: themeColors.bgCard }]} activeOpacity={0.75} onPress={() => router.push('/(app)/(tabs)/account')}>
           <AccountAvatar size={42} />
         </TouchableOpacity>
       </View>
@@ -211,8 +191,13 @@ export default function RankingScreen() {
           <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Cargando ranking…</Text>
         </View>
       ) : error ? (
-        /* API error → treat as empty (no campaigns yet) */
-        <EmptyState />
+        <View style={styles.centered}>
+          <Ionicons name="cloud-offline-outline" size={44} color={themeColors.textMuted} />
+          <Text style={[styles.loadingText, { color: themeColors.textSecondary, textAlign: 'center', paddingHorizontal: 32 }]}>{error}</Text>
+          <TouchableOpacity onPress={reload} style={{ marginTop: 8 }}>
+            <Text style={{ color: themeColors.primary, fontWeight: '700' }}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
       ) : campaigns.length === 0 ? (
         <EmptyState />
       ) : (
@@ -346,30 +331,19 @@ const styles = StyleSheet.create({
   cardInfo: { flex: 1, gap: 3 },
   cardName: { fontSize: typography.sizeMd, fontWeight: typography.bold, color: '#fff' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: 11, color: 'rgba(255,255,255,0.65)' },
+  metaText: { fontSize: 11, color: 'rgba(255,255,255,0.65)', flexShrink: 1 },
   metaDot: { fontSize: 11, color: 'rgba(255,255,255,0.4)' },
 
   /* ROI pill */
   roiPill: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radii.pill,
+    paddingVertical: 4,
+    borderRadius: radii.md,
+    alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
   roiPillTop: { backgroundColor: 'rgba(173, 141, 242, 0.15)' },
   roiText: { fontSize: 12, fontWeight: typography.bold, color: 'rgba(255,255,255,0.85)' },
+  roiCaption: { fontSize: 9, fontWeight: typography.bold, color: 'rgba(255,255,255,0.6)', textAlign: 'center' },
 
-  /* Badge API */
-  apiBadgeMini: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  apiBadgeMiniText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: typography.bold,
-    letterSpacing: 0.3,
-  },
 });

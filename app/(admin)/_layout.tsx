@@ -1,9 +1,8 @@
 import { Tabs, Redirect } from 'expo-router';
 import { useAuthGuard } from '../../src/hooks/useAuthGuard';
-import { ActivityIndicator } from 'react-native';
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { Ionicons, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
+import { ActivityIndicator, View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../../src/theme/colors';
 import Svg, { Path } from 'react-native-svg';
 
@@ -18,12 +17,11 @@ const IconamoonProfileFill = ({ color, size = 26 }: { color: string; size?: numb
   </Svg>
 );
 
-function AdminTabBar({ state, descriptors, navigation }: any) {
+function AdminTabBar({ state, navigation }: any) {
   return (
     <View style={styles.container}>
       <View style={styles.tabBar}>
         {state.routes.map((route: any, index: number) => {
-          const { options } = descriptors[route.key];
           const isFocused = state.index === index;
 
           const onPress = () => {
@@ -39,25 +37,28 @@ function AdminTabBar({ state, descriptors, navigation }: any) {
           };
 
           let iconName: any = 'grid';
-          let label = 'Companies';
+          let label = 'Empresas';
 
           if (route.name === 'companies') {
             iconName = 'business';
-            label = 'Companies';
+            label = 'Empresas';
           } else if (route.name === 'roles') {
             iconName = 'users-cog';
             label = 'Roles';
           } else if (route.name === 'profile') {
             iconName = 'person';
-            label = 'Profile';
+            label = 'Perfil';
           }
 
           return (
             <TouchableOpacity
               key={route.key}
               onPress={onPress}
-              style={styles.tabItem}
+              style={[styles.tabItem, isFocused && styles.tabItemFocused]}
               activeOpacity={0.7}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isFocused }}
+              accessibilityLabel={label}
             >
               {route.name === 'roles' ? (
                 <FontAwesome5 name="users-cog" size={24} color="#FFF" />
@@ -88,9 +89,12 @@ export default function AdminLayout() {
     );
   }
 
-  // Token inválido, sin sesión, o no es Super Admin (rol 1) → login
-  if (!isAuthorized || !profile || profile.id_role !== 1) {
+  // Sin sesión → login. Sesión válida pero sin rol Super Admin → su panel de campañas.
+  if (!isAuthorized || !profile) {
     return <Redirect href="/(auth)/login" />;
+  }
+  if (profile.id_role !== 1) {
+    return <Redirect href="/(app)/(tabs)/dashboard" />;
   }
 
   return (
@@ -125,6 +129,12 @@ const styles = StyleSheet.create({
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  tabItemFocused: {
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
   },
   tabLabel: {
     color: '#FFF',

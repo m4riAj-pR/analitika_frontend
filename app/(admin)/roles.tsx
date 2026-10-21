@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AccountAvatar from '../../src/components/AccountAvatar';
 import api from '../../src/services/api/client';
 import { colors, radii, shadows, typography } from '../../src/theme/colors';
+import { roleLabel } from '../../src/utils/format';
 import { useTheme } from '../../src/ThemeContext';
 
 interface UserRoleGroup {
@@ -31,7 +32,6 @@ export default function AdminRoles() {
   const { companyId, companyName } = useLocalSearchParams();
   const { colors: themeColors, isDark } = useTheme();
 
-  console.log("ROLES PARAMS:", { companyId, companyName });
 
   const [data, setData] = useState<{ owners: UserRoleGroup[], managements: UserRoleGroup[] }>({
     owners: [],
@@ -54,7 +54,6 @@ export default function AdminRoles() {
         ? `/analitika/admin/users-by-role?id_company=${companyId}`
         : '/analitika/admin/users-by-role';
 
-      console.log("FETCHING USERS FROM URL:", url);
       const response: any = await api.get(url);
       setData(response || { owners: [], managements: [] });
     } catch (error) {
@@ -94,7 +93,7 @@ export default function AdminRoles() {
         <View style={styles.userTextContainer}>
           <Text style={[styles.userEmail, { color: themeColors.textPrimary }]} numberOfLines={1}>{user.email}</Text>
           <View style={[styles.roleBadge, { backgroundColor: isDark ? '#0F172A' : '#F8F9FA' }]}>
-            <Text style={[styles.roleBadgeText, { color: themeColors.textMuted }]}>{user.role_name}</Text>
+            <Text style={[styles.roleBadgeText, { color: themeColors.textMuted }]}>{roleLabel(user.id_role)}</Text>
           </View>
         </View>
       </View>
@@ -158,7 +157,7 @@ export default function AdminRoles() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionDot, { backgroundColor: colors.secondary }]} />
-              <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Management ({data.managements.length})</Text>
+              <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Managers ({data.managements.length})</Text>
             </View>
             {data.managements.length > 0 ? (
               data.managements.map(user => <UserItem key={user.id_user} user={user} />)
@@ -218,7 +217,7 @@ export default function AdminRoles() {
                       size={24}
                       color={selectedUser?.id_role === 3 ? '#FFF' : themeColors.primary}
                     />
-                    <Text style={[styles.roleOptionText, { color: themeColors.primary }, selectedUser?.id_role === 3 && styles.activeOptionText]}>Management</Text>
+                    <Text style={[styles.roleOptionText, { color: themeColors.primary }, selectedUser?.id_role === 3 && styles.activeOptionText]}>Manager</Text>
                   </View>
                   <Text style={[styles.optionDesc, { color: themeColors.textSecondary }, selectedUser?.id_role === 3 && styles.activeOptionText]}>
                     Gestión operativa y visualización de analíticas.

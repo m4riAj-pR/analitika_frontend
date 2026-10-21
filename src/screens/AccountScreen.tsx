@@ -15,21 +15,27 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useProfile } from '../../src/hooks/useProfile';
-import { authApi } from '../../src/services/api/auth';
-import { usersApi } from '../../src/services/api';
-import { removeToken } from '../../src/services/api/client';
-import { colors, palette, radii, shadows, spacing, typography } from '../../src/theme/colors';
-import AccountAvatar from '../../src/components/AccountAvatar';
-import { useTheme } from '../../src/ThemeContext';
+import { useProfile } from '../hooks/useProfile';
+import { authApi } from '../services/api/auth';
+import { usersApi } from '../services/api';
+import { removeToken } from '../services/api/client';
+import { colors, palette, radii, shadows, spacing, typography } from '../theme/colors';
+import AccountAvatar from '../components/AccountAvatar';
+import { useTheme } from '../ThemeContext';
+import { roleLabel } from '../utils/format';
 
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { theme, toggleTheme, colors: themeColors, isDark } = useTheme();
+  const { toggleTheme, colors: themeColors, isDark } = useTheme();
 
   const { profile, loading, saving, updateProfile } = useProfile();
-  const isOwner = profile?.id_role === 1 || profile?.id_role === 2;
+  // La API solo permite editar personas y usuarios a Owner (2) y Super Admin (1)
+  const canEdit = profile?.id_role === 1 || profile?.id_role === 2;
+  const companies: { id_company: number; name: string }[] = Array.isArray(profile?.companies) ? profile.companies : [];
+  const companyText = companies.length > 0
+    ? companies.map((c) => c.name).join(', ')
+    : profile?.id_role === 1 ? 'Acceso global a todas las empresas' : 'Sin empresa asignada';
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -59,8 +65,8 @@ export default function AccountScreen() {
       Alert.alert('Error', 'Todos los campos son obligatorios');
       return;
     }
-    if (passwordForm.newPassword.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+    if (passwordForm.newPassword.length < 8) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres');
       return;
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -74,7 +80,6 @@ export default function AccountScreen() {
         password_hash: passwordForm.newPassword,
         id_person: profile.id_person,
         id_role: profile.id_role,
-        username: profile.email.split('@')[0],
       });
       Alert.alert('Éxito', 'Contraseña actualizada correctamente');
       setShowPasswordModal(false);
@@ -109,8 +114,8 @@ export default function AccountScreen() {
       });
       setIsEditing(false);
       Alert.alert('Éxito', 'Perfil actualizado correctamente');
-    } catch (err) {
-      Alert.alert('Error', 'No se pudo actualizar el perfil');
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'No se pudo actualizar el perfil');
     }
   };
 
@@ -133,7 +138,7 @@ export default function AccountScreen() {
       {/* HEADER */}
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: themeColors.primary }]}>Mi Perfil</Text>
-        {!isEditing && (
+        {!isEditing && canEdit && (
           <TouchableOpacity 
             style={[styles.editBtn, { backgroundColor: isDark ? '#1E293B' : '#EDE9FE' }]} 
             onPress={() => setIsEditing(true)}
@@ -192,7 +197,7 @@ export default function AccountScreen() {
               <Text style={[styles.label, { color: themeColors.textSecondary }]}>Empresa <Text style={styles.readOnlyText}>(Solo lectura)</Text></Text>
               <TextInput
                 style={[styles.input, styles.inputDisabled, { backgroundColor: isDark ? '#334155' : '#F1F5F9', color: themeColors.textMuted }]}
-                value={profile?.company_name || 'Empresa no encontrada'}
+                value={companyText}
                 editable={false}
               />
             </View>
@@ -223,7 +228,7 @@ export default function AccountScreen() {
             <Text style={[styles.userName, { color: themeColors.textPrimary }]} numberOfLines={2}>{fullName}</Text>
             <View style={[styles.badgeContainer, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
               <Text style={[styles.badgeText, { color: themeColors.textSecondary }]}>
-                {profile?.role_name || (profile?.id_role === 1 ? 'Super Admin' : profile?.id_role === 2 ? 'Owner' : profile?.id_role === 3 ? 'Management' : 'Usuario')}
+                {roleLabel(profile?.id_role)}
               </Text>
             </View>
 
@@ -235,7 +240,7 @@ export default function AccountScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.infoLabel, { color: themeColors.textSecondary }]}>Correo Electrónico</Text>
-                <Text style={[styles.infoValue, { color: themeColors.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">{profile?.email || 'ejemplo@correo.com'}</Text>
+                <Text style={[styles.infoValue, { color: themeColors.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">{profile?.email || '—'}</Text>
               </View>
             </View>
 
@@ -254,9 +259,9 @@ export default function AccountScreen() {
                 <Ionicons name="business" size={20} color={themeColors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.infoLabel, { color: themeColors.textSecondary }]}>Empresa</Text>
-                <Text style={[styles.infoValue, { color: themeColors.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">
-                  {profile?.company_name || 'Empresa no encontrada'}
+                <Text style={[styles.infoLabel, { color: themeColors.textSecondary }]}>Empresa{companies.length > 1 ? 's' : ''}</Text>
+                <Text style={[styles.infoValue, { color: themeColors.textPrimary }]} numberOfLines={2} ellipsizeMode="tail">
+                  {companyText}
                 </Text>
               </View>
             </View>
@@ -265,7 +270,7 @@ export default function AccountScreen() {
       </View>
 
       {/* SECCIÓN SEGURIDAD */}
-      {!isEditing && (
+      {!isEditing && canEdit && (
         <View style={[styles.managementSection, { backgroundColor: themeColors.bgCard }]}>
           <View style={styles.managementHeader}>
             <View>
@@ -280,6 +285,15 @@ export default function AccountScreen() {
               <Text style={[styles.editBtnText, { color: themeColors.primary }]}>Cambiar Clave</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      )}
+
+      {!isEditing && !canEdit && (
+        <View style={[styles.managementSection, { backgroundColor: themeColors.bgCard }]}>
+          <Text style={[styles.sectionSubtitle, { color: themeColors.textSecondary }]}>
+            Tu rol no puede modificar el perfil ni la contraseña desde la app. Solicita los cambios al Owner de tu empresa
+            o usa “¿Olvidaste tu contraseña?” en el inicio de sesión.
+          </Text>
         </View>
       )}
 
@@ -317,7 +331,7 @@ export default function AccountScreen() {
                   style={[styles.modalInput, { backgroundColor: themeColors.bgInput, color: themeColors.textPrimary, borderColor: themeColors.borderInput }]}
                   value={passwordForm.newPassword}
                   onChangeText={(t) => setPasswordForm({...passwordForm, newPassword: t})}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 8 caracteres"
                   secureTextEntry
                   placeholderTextColor={themeColors.textMuted}
                 />
@@ -746,157 +760,4 @@ const styles = StyleSheet.create({
   },
 
   /* CUENTAS PUBLICITARIAS */
-  connectMetaBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.pill,
-  },
-  connectMetaBtnText: {
-    color: '#fff',
-    fontSize: typography.sizeSm,
-    fontWeight: typography.semibold,
-  },
-  adEmptyContainer: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.md,
-  },
-  adEmptyIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  adEmptyTitle: {
-    fontSize: typography.sizeMd,
-    fontWeight: typography.bold,
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-  adEmptySubtitle: {
-    fontSize: typography.sizeSm,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: spacing.lg,
-  },
-  adEmptyCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radii.pill,
-    ...shadows.card,
-  },
-  adEmptyCtaText: {
-    color: '#fff',
-    fontSize: typography.sizeSm,
-    fontWeight: typography.bold,
-  },
-  adConnectionsList: {
-    borderTopWidth: 1,
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    gap: spacing.md,
-  },
-  adConnectionCard: {
-    borderRadius: radii.lg,
-    padding: spacing.md,
-  },
-  adConnectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  providerBadge: {
-    paddingVertical: 3,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radii.sm,
-  },
-  providerBadgeText: {
-    fontSize: typography.sizeXs,
-    fontWeight: typography.bold,
-    letterSpacing: 0.5,
-  },
-  adStatusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 3,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radii.pill,
-  },
-  adStatusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 5,
-  },
-  adStatusText: {
-    fontSize: typography.sizeXs,
-    fontWeight: typography.bold,
-  },
-  adAccountName: {
-    fontSize: typography.sizeMd,
-    fontWeight: typography.bold,
-    marginTop: spacing.xs,
-  },
-  adAccountId: {
-    fontSize: typography.sizeXs,
-    marginTop: 2,
-    marginBottom: spacing.xs,
-  },
-  syncRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-  },
-  syncText: {
-    fontSize: typography.sizeXs,
-  },
-  syncErrorMessage: {
-    fontSize: typography.sizeXs,
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  adCardActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
-    paddingTop: spacing.sm,
-  },
-  syncBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: radii.md,
-    paddingVertical: spacing.xs + 2,
-  },
-  syncBtnText: {
-    fontSize: typography.sizeSm,
-    fontWeight: typography.semibold,
-  },
-  disconnectBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    backgroundColor: '#FEF2F2',
-    borderRadius: radii.md,
-    paddingVertical: spacing.xs + 2,
-  },
-  disconnectBtnText: {
-    color: '#EF4444',
-    fontSize: typography.sizeSm,
-    fontWeight: typography.semibold,
-  },
 });

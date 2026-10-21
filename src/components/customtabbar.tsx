@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { Tabs } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { colors, typography } from '../theme/colors';
+import { typography } from '../theme/colors';
 import { useTheme } from '../ThemeContext';
 import { useProfile } from '../hooks/useProfile';
 
@@ -56,10 +56,17 @@ const IconamoonProfileFill = ({ color, size = 22 }: { color: string; size?: numb
   </Svg>
 );
 
-export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+// Tipo de props que expo-router entrega a `tabBar` (evita el desajuste con @react-navigation/bottom-tabs)
+type TabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>['tabBar']>>[0];
+
+export default function CustomTabBar({ state, navigation }: TabBarProps) {
   const { colors: themeColors } = useTheme();
   const { profile } = useProfile();
-  const isOwner = profile?.id_role === 1 || profile?.id_role === 2;
+  const isOwner = profile?.id_role === 2;
+
+  // Ruta activa por key: el índice de state.routes no coincide con el de las rutas visibles
+  // porque 'learning' (y 'team' para Manager) se ocultan.
+  const activeKey = state.routes[state.index]?.key;
 
   // Filtrar la ruta 'team' si el usuario NO es Owner, y siempre ocultar 'learning'
   const visibleRoutes = state.routes.filter((route) => {
@@ -72,8 +79,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
     <View style={styles.container}>
       <View style={[styles.tabBar, { backgroundColor: themeColors.primary }]}>
         {visibleRoutes.map((route) => {
-          const index = visibleRoutes.findIndex(r => r.key === route.key);
-          const isFocused = state.index === index;
+          const isFocused = route.key === activeKey;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -89,23 +95,19 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
           const routeName = route.name;
           let label = '';
           let iconName: keyof typeof Ionicons.glyphMap | null = null;
-          let isCustomIcon = false;
 
           if (routeName === 'dashboard') {
             label = 'Inicio';
-            isCustomIcon = true;
           } else if (routeName === 'campaign') {
             label = 'Campañas';
             iconName = 'megaphone';
           } else if (routeName === 'ranking') {
             label = 'Ranking';
-            isCustomIcon = true;
           } else if (routeName === 'team') {
             label = 'Equipo';
             iconName = 'people';
           } else if (routeName === 'account') {
             label = 'Perfil';
-            isCustomIcon = true;
           }
 
           return (
@@ -114,6 +116,9 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
               onPress={onPress}
               style={styles.tabItem}
               activeOpacity={0.7}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isFocused }}
+              accessibilityLabel={label}
             >
               <View style={[styles.iconWrapper, isFocused && styles.iconWrapperFocused]}>
                 {routeName === 'dashboard' ? (

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,35 +16,25 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { LineChart, BarChart } from 'react-native-chart-kit';
+import { BarChart } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AccountAvatar from '../../../src/components/AccountAvatar';
 import { useProfile } from '../../../src/hooks/useProfile';
 import { campaignsApi } from '../../../src/services/api/campaign';
 import { notificationsApi } from '../../../src/services/api/notifications';
 import { getClicsPorDia, getMetricas, getTablaClic } from '../../../src/services/api/stats';
-import { adConnectionsApi } from '../../../src/services/api/adConnections';
 import type { Campaign } from '../../../src/services/api/types';
-import { colors, palette, radii, shadows, spacing, typography } from '../../../src/theme/colors';
+import { colors, radii, shadows, spacing, typography } from '../../../src/theme/colors';
+import { deviceFromUA, formatDayShort, formatInt, formatMoney, formatPct, formatRatio, statusLabel } from '../../../src/utils/format';
 import { useTheme } from '../../../src/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const KPI_CARD_WIDTH = (width - 48 - 15) / 2;
 
-const STATUS_LABEL: Record<string, string> = {
-  active: 'Activa',
-  draft: 'Borrador',
-  paused: 'Pausada',
-  finished: 'Finalizada',
-};
-const statusLabel = (s: string) => STATUS_LABEL[String(s).toLowerCase()] ?? String(s);
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-  }).format(value);
+// Días visibles en la gráfica de barras para que las etiquetas no se encimen
+const CHART_MAX_DAYS = 7;
+// Ancho interno de la tarjeta: pantalla − padding del scroll (2×24) − padding de la tarjeta (2×20)
+const CHART_WIDTH = width - 48 - 40;
 
 // ─── Header Component ────────────────────────────────────────────────────────
 function Header({ unreadCount }: { unreadCount: number }) {
@@ -65,6 +55,7 @@ function Header({ unreadCount }: { unreadCount: number }) {
           style={styles.notificationButton}
           activeOpacity={0.7}
           onPress={() => router.push('/(app)/notifications')}
+          accessibilityLabel={unreadCount > 0 ? `Notificaciones, ${unreadCount} sin leer` : 'Notificaciones'}
         >
           <Ionicons name="notifications" size={28} color={themeColors.primary} />
           {unreadCount > 0 && <View style={[styles.unreadDot, { borderColor: themeColors.bgPage }]} />}
@@ -73,7 +64,8 @@ function Header({ unreadCount }: { unreadCount: number }) {
         <TouchableOpacity
           style={styles.profileButton}
           activeOpacity={0.7}
-          onPress={() => router.push('/(app)/account' as any)}
+          onPress={() => router.push('/(app)/(tabs)/account')}
+          accessibilityLabel="Mi perfil"
         >
           <AccountAvatar size={42} />
         </TouchableOpacity>
@@ -164,15 +156,11 @@ function EmptyState() {
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 function KpiCard({
   label,
-  value,
-  isCurrency = false,
   displayValue,
   onInfoPress,
 }: {
   label: string;
-  value?: number;
-  isCurrency?: boolean;
-  displayValue?: string;
+  displayValue: string;
   onInfoPress?: () => void;
 }) {
   const { colors: themeColors, isDark } = useTheme();
@@ -186,8 +174,8 @@ function KpiCard({
           </TouchableOpacity>
         )}
       </View>
-      <Text style={[isCurrency ? styles.kpiValueCurrency : styles.kpiValue, { color: themeColors.primary }]} numberOfLines={1}>
-        {displayValue != null ? displayValue : (isCurrency ? formatCurrency(value ?? 0) : (value ?? 0))}
+      <Text style={[displayValue.length > 9 ? styles.kpiValueCurrency : styles.kpiValue, { color: themeColors.primary }]} numberOfLines={1} adjustsFontSizeToFit>
+        {displayValue}
       </Text>
     </View>
   );
@@ -210,8 +198,7 @@ export default function DashboardScreen() {
 
   const [loadingStats, setLoadingStats] = useState(false);
   const [metricas, setMetricas] = useState<any>(null);
-  const [campaignMapping, setCampaignMapping] = useState<any>(null);
-  const [showCtrModal, setShowCtrModal] = useState(false);
+  const [showRateModal, setShowRateModal] = useState(false);
   const [clicsPorDia, setClicsPorDia] = useState<any[]>([]);
   const [tablaClics, setTablaClics] = useState<any[]>([]);
   const [statsError, setStatsError] = useState(false);
@@ -260,10 +247,7 @@ export default function DashboardScreen() {
     setTimeout(() => setRefreshing(false), 900);
   }, [loadData]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
+  // useFocusEffect también corre al montar: una sola carga inicial
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -280,91 +264,26 @@ export default function DashboardScreen() {
     setStatsError(false);
 
     try {
-      // Usamos Promise.allSettled para que si falla uno, los demás sigan cargando
-      const results = await Promise.allSettled([
+      // allSettled: si falla el detalle de clics, los KPIs igual se muestran
+      const [resMet, resClicsDia, resTabla] = await Promise.allSettled([
         getMetricas(campaign.id_campaign),
         getClicsPorDia(campaign.id_campaign),
         getTablaClic(campaign.id_campaign),
-        adConnectionsApi.getMapping(campaign.id_campaign),
       ]);
 
-      const [resMet, resClicsDia, resTabla, resMapping] = results;
-
-      let metData = null;
       if (resMet.status === 'fulfilled') {
-        const met = resMet.value;
-        metData = met?.response || met?.data || met;
-        setMetricas(metData);
+        setMetricas(resMet.value);
       } else {
-        console.log("Error loading metrics:", resMet.reason);
         setMetricas(null);
-      }
-
-      if (resMapping.status === 'fulfilled') {
-        setCampaignMapping(resMapping.value);
-      } else {
-        setCampaignMapping(null);
-      }
-
-      if (resClicsDia.status === 'fulfilled') {
-        const clicsDia = resClicsDia.value;
-        setClicsPorDia(Array.isArray(clicsDia) ? clicsDia : (clicsDia?.data || clicsDia?.response || []));
-      } else {
-        console.log("Error loading clicks per day:", resClicsDia.reason);
-        setClicsPorDia([]);
-      }
-
-      let data = [];
-      if (resTabla.status === 'fulfilled') {
-        const tabla = resTabla.value;
-        data = Array.isArray(tabla) 
-          ? tabla 
-          : (tabla?.data || tabla?.response || tabla?.clics || tabla?.clicks || tabla?.list || tabla?.items || []);
-      }
-
-      // FALLBACK SI FALLA O ESTÁ VACÍO: Si no hay datos o la petición falló, pero sabemos que hay clics
-      if (data.length === 0 && (metData?.clics || metData?.clicks || 0) > 0) {
-        try {
-          const { clicksApi, trackingLinksApi } = await import('../../../src/services/api');
-          
-          // Fallback 1: Endpoint general de clics con filtro local por campaña
-          const fallbackRes: any = await clicksApi.getAll();
-          const allClicks = Array.isArray(fallbackRes) ? fallbackRes : (fallbackRes?.response || fallbackRes?.data || []);
-          
-          let filtered = allClicks.filter((c: any) => 
-            Number(c.id_campaign) === Number(campaign.id_campaign)
-          );
-
-          // Fallback 2: Si aún no hay, buscar por Tracking Links de la campaña
-          if (filtered.length === 0) {
-            console.log("Fallback 1 vacío, intentando Fallback 2 (por Tracking Links)...");
-            const linksRes: any = await trackingLinksApi.listByCampaign(Number(campaign.id_campaign));
-            const links = Array.isArray(linksRes) ? linksRes : (linksRes?.response || linksRes?.data || []);
-            
-            if (links.length > 0) {
-              const linkIds = links.map((l: any) => Number(l.id_link));
-              filtered = allClicks.filter((c: any) => linkIds.includes(Number(c.id_link)));
-            }
-          }
-
-          if (filtered.length > 0) {
-            data = filtered;
-            console.log(`FALLBACK SUCCESS: Se encontraron ${data.length} clics.`);
-          }
-        } catch (err) {
-          console.log("Detailed fallbacks failed:", err);
-        }
-      }
-
-      setTablaClics(data);
-      
-      // Solo mostramos error general si fallaron los KPIs básicos (métricas)
-      if (resMet.status === 'rejected') {
         setStatsError(true);
       }
 
-    } catch (err) {
-      console.log("General error in fetchStats:", err);
+      const diaRaw: any = resClicsDia.status === 'fulfilled' ? resClicsDia.value : null;
+      setClicsPorDia(Array.isArray(diaRaw?.data) ? diaRaw.data : []);
+
+      const tablaRaw: any = resTabla.status === 'fulfilled' ? resTabla.value : null;
+      setTablaClics(Array.isArray(tablaRaw?.data) ? tablaRaw.data : []);
+    } catch {
       setStatsError(true);
     } finally {
       setLoadingStats(false);
@@ -392,6 +311,14 @@ export default function DashboardScreen() {
         {/* Título de sección */}
         <View style={styles.listHeaderSection}>
           <Text style={[styles.listTitle, { color: themeColors.textPrimary }]}>Mis Campañas</Text>
+          {profile?.company_name ? (
+            <View style={styles.companyRow}>
+              <Ionicons name="business-outline" size={14} color={themeColors.textSecondary} />
+              <Text style={[styles.companyText, { color: themeColors.textSecondary }]} numberOfLines={1}>
+                {profile.company_name}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Banner Aprende Marketing */}
@@ -441,7 +368,7 @@ export default function DashboardScreen() {
               <CampaignCard
                 campaign={item}
                 index={index}
-                isOwner={profile?.id_role < 3}
+                isOwner={profile?.id_role === 2}
                 onSelect={() => setSelectedCampaign(item)}
               />
             )}
@@ -458,9 +385,12 @@ export default function DashboardScreen() {
   }
 
   // ─── Vista de Detalle ────────────────────────────────────────────────────────
-  const chartLabels = clicsPorDia.map((d: any, i) => d.fecha || d.date || d.day || `D${i + 1}`);
-  const chartValues = clicsPorDia.map((d: any) => Number(d.clics || d.clicks || d.count || 0));
-  const hasChart = chartValues.length > 0 && chartValues.some(v => v > 0);
+  const chartDays = clicsPorDia.slice(-CHART_MAX_DAYS);
+  // Con más de 5 barras se rotula una de cada dos fechas para que no se encimen
+  const chartLabels = chartDays.map((d: any, i: number) => (chartDays.length > 5 && i % 2 === 1 ? '' : formatDayShort(d.fecha)));
+  const chartValues = chartDays.map((d: any) => Number(d.clics) || 0);
+  const hasChart = chartValues.some(v => v > 0);
+  const vigencia = `${selectedCampaign?.start_date ? formatDayShort(selectedCampaign.start_date) + '/' + selectedCampaign.start_date.slice(0, 4) : 'Sin inicio'} – ${selectedCampaign?.end_date ? formatDayShort(selectedCampaign.end_date) + '/' + selectedCampaign.end_date.slice(0, 4) : 'sin fecha fin'}`;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bgPage }]}>
@@ -486,23 +416,9 @@ export default function DashboardScreen() {
           <View style={{ flex: 1, marginRight: 10 }}>
             <Text style={[styles.campaignBannerText, { color: themeColors.textPrimary }]}>{selectedCampaign?.name}</Text>
             
-            {/* Indicador de Origen del Dato: Sincronizado vs Manual */}
             <View style={styles.originBadgeRow}>
-              {(metricas?.data_source?.startsWith('api_') || campaignMapping?.external_campaign_id) ? (
-                <View style={[styles.originBadge, { backgroundColor: isDark ? '#1E1B4B' : '#EDE9FE', borderColor: palette.purple4 }]}>
-                  <Ionicons name="cloud-done-outline" size={13} color={palette.purple4} style={{ marginRight: 4 }} />
-                  <Text style={[styles.originBadgeText, { color: palette.purple4 }]}>
-                    Sincronizado con Meta Ads
-                  </Text>
-                </View>
-              ) : (
-                <View style={[styles.originBadge, { backgroundColor: isDark ? '#334155' : '#F1F5F9', borderColor: themeColors.borderDivider }]}>
-                  <Ionicons name="create-outline" size={13} color={themeColors.textMuted} style={{ marginRight: 4 }} />
-                  <Text style={[styles.originBadgeText, { color: themeColors.textMuted }]}>
-                    Gasto manual
-                  </Text>
-                </View>
-              )}
+              <Ionicons name="calendar-outline" size={13} color={themeColors.textMuted} style={{ marginRight: 4 }} />
+              <Text style={[styles.originBadgeText, { color: themeColors.textMuted }]}>{vigencia}</Text>
             </View>
           </View>
 
@@ -511,12 +427,11 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Banner de Advertencia si la sincronización falló */}
-        {campaignMapping?.sync_enabled && (metricas?.data_source === 'manual' || campaignMapping?.status === 'error') && (
+        {statsError && !loadingStats && (
           <View style={[styles.warningBanner, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7', borderColor: themeColors.warning }]}>
             <Ionicons name="warning-outline" size={18} color={themeColors.warning} style={{ marginRight: 8, marginTop: 2 }} />
             <Text style={[styles.warningBannerText, { color: isDark ? '#FDE68A' : '#92400E' }]}>
-              No se pudo sincronizar. Mostrando último dato disponible o valor manual.
+              No se pudieron cargar las métricas de esta campaña. Desliza hacia abajo para reintentar.
             </Text>
           </View>
         )}
@@ -529,35 +444,37 @@ export default function DashboardScreen() {
         ) : (
           <>
             <View style={styles.kpiGrid}>
-              <KpiCard label="Clics" value={(metricas?.clics || metricas?.clicks) ?? 0} />
-              <KpiCard label="Convers." value={(metricas?.conversiones || metricas?.conversions) ?? 0} />
+              <KpiCard label="Clics" displayValue={formatInt(metricas?.clics ?? 0)} />
+              <KpiCard label="Conversiones" displayValue={formatInt(metricas?.conversiones ?? 0)} />
               <KpiCard
-                label="CTR"
-                displayValue={
-                  metricas?.impressions != null && metricas.impressions > 0
-                    ? `${Number(metricas.ctr_real ?? 0).toFixed(2)}%`
-                    : 'No disponible'
-                }
-                onInfoPress={() => setShowCtrModal(true)}
+                label="Tasa de conversión"
+                displayValue={formatPct(metricas?.conversion_rate ?? 0)}
+                onInfoPress={() => setShowRateModal(true)}
               />
-              {!isManager && (
+              {/* El backend no envía campos financieros a Manager: solo se muestran si llegaron */}
+              {!isManager && metricas?.ingresos != null && (
                 <>
-                  <KpiCard label="Gasto" value={metricas?.spent ?? (selectedCampaign?.spent ? Number(selectedCampaign.spent) : 0)} isCurrency />
-                  <KpiCard label="Ingresos" value={metricas?.ingresos ?? 0} isCurrency />
-                  <KpiCard label="ROI" value={metricas?.roi ?? 0} />
-                  <KpiCard label="ROAS" value={metricas?.roas ?? 0} />
-                  <KpiCard label="CPC" value={metricas?.cpc ?? 0} isCurrency />
-                  <KpiCard label="CPA" value={metricas?.cpa ?? 0} isCurrency />
+                  <KpiCard label="Inversión" displayValue={formatMoney(metricas.spent)} />
+                  <KpiCard label="Ingresos" displayValue={formatMoney(metricas.ingresos)} />
+                  <KpiCard label="ROI" displayValue={formatPct(metricas.roi)} />
+                  <KpiCard label="ROAS" displayValue={formatRatio(metricas.roas)} />
+                  <KpiCard label="CPC" displayValue={formatMoney(metricas.cpc)} />
+                  <KpiCard label="CPA" displayValue={formatMoney(metricas.cpa)} />
                 </>
               )}
             </View>
 
             <View style={[styles.chartCard, { backgroundColor: themeColors.bgCard }]}>
-              <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Clics por Día</Text>
+              <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Clics por día</Text>
+              {clicsPorDia.length > CHART_MAX_DAYS && (
+                <Text style={{ fontSize: 12, color: themeColors.textMuted, marginTop: 2 }}>
+                  Últimos {CHART_MAX_DAYS} días con actividad
+                </Text>
+              )}
               {hasChart ? (
                 <BarChart
                   data={{ labels: chartLabels, datasets: [{ data: chartValues }] }}
-                  width={width - 48}
+                  width={CHART_WIDTH}
                   height={220}
                   yAxisLabel=""
                   yAxisSuffix=""
@@ -576,7 +493,7 @@ export default function DashboardScreen() {
                   }}
                   fromZero={true}
                   showValuesOnTopOfBars={true}
-                  style={{ borderRadius: 16, marginTop: 15, marginLeft: -16 }}
+                  style={{ borderRadius: 16, marginTop: 15, marginLeft: -8 }}
                 />
               ) : (
                 <Text style={[styles.noDataText, { color: themeColors.textMuted }]}>No hay datos suficientes para la gráfica.</Text>
@@ -598,16 +515,10 @@ export default function DashboardScreen() {
                   
                   {/* Body */}
                   {tablaClics.slice(0, 10).map((click: any, idx: number) => {
-                    const date = new Date(click.created_at || click.fecha);
-                    const dateStr = date.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
-                    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    
-                    // Simple parser para UserAgent (si existe)
-                    const ua = click.user_agent || click.dispositivo || 'N/A';
-                    let device = 'Web';
-                    if (ua.toLowerCase().includes('android')) device = 'Android';
-                    else if (ua.toLowerCase().includes('iphone') || ua.toLowerCase().includes('ipad')) device = 'iOS';
-                    else if (ua.toLowerCase().includes('mobile')) device = 'Móvil';
+                    // fecha/hora ya vienen formateadas por el backend (UTC); se evita reconvertir zona horaria
+                    const dateStr = click.fecha && click.fecha !== 'N/A' ? formatDayShort(click.fecha) : '—';
+                    const timeStr = click.hora && click.hora !== 'N/A' ? String(click.hora).slice(0, 5) : '';
+                    const device = deviceFromUA(click.user_agent);
 
                     return (
                       <View key={idx} style={[styles.tableRow, { borderBottomColor: themeColors.borderDivider }]}>
@@ -617,7 +528,7 @@ export default function DashboardScreen() {
                         </View>
                         <View style={{ flex: 1.5 }}>
                           <Text style={[styles.tableCell, { color: themeColors.textSecondary }]} numberOfLines={1}>
-                            {click.pais || click.country || 'Colombia'}
+                            {click.pais || 'Desconocido'}
                           </Text>
                           {click.utm_source && click.utm_source !== 'N/A' && (
                             <Text style={{ fontSize: 10, color: themeColors.primary, fontWeight: '700', textTransform: 'uppercase' }}>{click.utm_source}</Text>
@@ -625,7 +536,7 @@ export default function DashboardScreen() {
                         </View>
                         <View style={{ flex: 1.5, flexDirection: 'row', alignItems: 'center' }}>
                           <Ionicons 
-                            name={(device === 'iOS' || device === 'Android' || device === 'Móvil' ? 'smartphone-outline' : 'desktop-outline') as any} 
+                            name={device === 'Móvil' || device === 'Tablet' ? 'phone-portrait-outline' : 'desktop-outline'}
                             size={14} 
                             color={themeColors.textMuted} 
                             style={{ marginRight: 4 }} 
@@ -645,9 +556,9 @@ export default function DashboardScreen() {
               ) : (
                 <View style={{ alignItems: 'center', paddingVertical: 20 }}>
                   <Text style={[styles.noDataText, { color: themeColors.textMuted }]}>
-                    {(metricas?.clics || metricas?.clicks) > 0 
-                      ? `No hay detalles disponibles para los ${(metricas?.clics || metricas?.clicks)} clics registrados.`
-                      : 'No hay registros de clics individuales aún.'}
+                    {(metricas?.clics ?? 0) > 0
+                      ? `No hay detalles disponibles para los ${formatInt(metricas.clics)} clics registrados.`
+                      : 'Aún no hay clics. Comparte el enlace de seguimiento de la campaña.'}
                   </Text>
                   <TouchableOpacity 
                     onPress={() => fetchStats(selectedCampaign!)}
@@ -664,33 +575,33 @@ export default function DashboardScreen() {
 
       {/* ── MODAL EXPLICATIVO DEL CTR ── */}
       <Modal
-        visible={showCtrModal}
+        visible={showRateModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowCtrModal(false)}
+        onRequestClose={() => setShowRateModal(false)}
       >
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setShowCtrModal(false)}
+          onPress={() => setShowRateModal(false)}
         >
           <View style={[styles.ctrModalContent, { backgroundColor: themeColors.bgCard }]}>
             <View style={styles.ctrModalHeader}>
               <View style={[styles.ctrIconCircle, { backgroundColor: isDark ? '#1E1B4B' : '#EDE9FE' }]}>
                 <Ionicons name="pie-chart-outline" size={26} color={themeColors.primary} />
               </View>
-              <Text style={[styles.ctrModalTitle, { color: themeColors.textPrimary }]}>Tasa de Clics (CTR)</Text>
+              <Text style={[styles.ctrModalTitle, { color: themeColors.textPrimary }]}>Tasa de conversión</Text>
             </View>
 
             <Text style={[styles.ctrModalText, { color: themeColors.textSecondary }]}>
-              Este porcentaje compara cuántas veces se mostró tu anuncio con cuántas personas llegaron realmente a tu página.
+              Porcentaje de clics en el enlace de seguimiento que terminaron en una conversión (venta, registro o contacto).
               {'\n\n'}
-              Puede haber una pequeña diferencia porque algunas personas cierran la app antes de cargar la página.
+              Se calcula como conversiones ÷ clics registrados por Analitika.
             </Text>
 
             <TouchableOpacity
               style={[styles.ctrModalCloseBtn, { backgroundColor: themeColors.primary }]}
-              onPress={() => setShowCtrModal(false)}
+              onPress={() => setShowRateModal(false)}
               activeOpacity={0.85}
             >
               <Text style={styles.ctrModalCloseBtnText}>Entendido</Text>
@@ -712,8 +623,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     height: 80,
   },
-  logoWrapper: { flex: 80, alignItems: 'flex-start', justifyContent: 'center' },
-  logoImage: { width: 180, height: 180, marginTop: 100, marginLeft: -12 },
+  // El PNG del logo es cuadrado con margen transparente: se recorta en un contenedor
+  // de altura fija en lugar de desplazarlo con márgenes que lo sacaban del header.
+  // Franja visible del PNG (500px): y 182–278 → a 150px queda en 55–83; se sube 49px para centrarla.
+  logoWrapper: { width: 150, height: 40, overflow: 'hidden' },
+  logoImage: { width: 150, height: 150, marginTop: -49, marginLeft: -11 },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -752,6 +666,8 @@ const styles = StyleSheet.create({
   },
   profileButton: { padding: 4, justifyContent: 'center' },
 
+  companyRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  companyText: { fontSize: 14, fontWeight: '600', flexShrink: 1 },
   listHeaderSection: {
     paddingHorizontal: 24,
     paddingBottom: 12,

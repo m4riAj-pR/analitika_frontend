@@ -1,5 +1,23 @@
 import { getUser, getToken, removeToken, request, saveToken, saveUser } from "./client";
-import { Alert } from "react-native";
+
+/**
+ * El backend devuelve las empresas como `companies: [{ id_company, name }]` y no envía
+ * `id_company` ni `company_name`. Se derivan aquí para que toda la app (perfil, creación
+ * de campañas, equipo) lea la empresa del mismo lugar, también después de refrescar /me.
+ */
+export function normalizeUser(raw: any) {
+  if (!raw || typeof raw !== "object") return raw;
+  const companies = Array.isArray(raw.companies)
+    ? raw.companies.filter(Boolean).map((c: any) => ({ id_company: Number(c.id_company), name: c.name }))
+    : [];
+  const primary = companies[0];
+  return {
+    ...raw,
+    companies,
+    id_company: raw.id_company ?? primary?.id_company ?? null,
+    company_name: primary?.name ?? raw.company_name ?? null,
+  };
+}
 
 export const loginUser = async (emailOrData: any, password?: string) => {
   const email = typeof emailOrData === "object" ? emailOrData.email : emailOrData;
@@ -13,18 +31,10 @@ export const loginUser = async (emailOrData: any, password?: string) => {
   // Guardar token
   await saveToken(res.access_token);
 
-  // Extraer id_company de la respuesta (primer empresa)
-  let userToSave = res.user || res;
-  if (userToSave && Array.isArray(userToSave.companies) && userToSave.companies.length > 0) {
-    const companyId = userToSave.companies[0].id_company;
-    const companyName = userToSave.companies[0].name;
-    userToSave = { ...userToSave, id_company: companyId, company_name: companyName };
-  }
-  // Guardar usuario con id_company
+  const userToSave = normalizeUser(res.user || res);
   await saveUser(userToSave);
-  console.log('Login response (augmented):', userToSave);
 
-  return res;
+  return { ...res, user: userToSave };
 };
 
 export const registerUser = async (data: any) => {
@@ -42,15 +52,10 @@ export const registerUser = async (data: any) => {
 
   await saveToken(res.access_token);
 
-  let userToSave = res.user || res;
-  if (userToSave && Array.isArray(userToSave.companies) && userToSave.companies.length > 0) {
-    const companyId = userToSave.companies[0].id_company;
-    const companyName = userToSave.companies[0].name;
-    userToSave = { ...userToSave, id_company: companyId, company_name: companyName };
-  }
+  const userToSave = normalizeUser(res.user || res);
   await saveUser(userToSave);
 
-  return res;
+  return { ...res, user: userToSave };
 };
 
 export const me = async () => {
@@ -59,15 +64,14 @@ export const me = async () => {
     if (!token) return null;
 
     const res: any = await request("/me");
-    if (res) {
-      await saveUser(res);
-    }
-    return res;
+    if (!res) return null;
+    const user = normalizeUser(res);
+    await saveUser(user);
+    return user;
   } catch (err: any) {
-    if (err?.status !== 401) {
-      Alert.alert("Error", "No se pudo actualizar la información del perfil.");
-    }
-    return await getUser(); // Fallback to cache
+    // 401: el cliente ya limpió la sesión. Otros errores (red): se usa la caché local.
+    if (err?.status === 401) return null;
+    return normalizeUser(await getUser());
   }
 };
 

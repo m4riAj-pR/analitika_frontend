@@ -102,13 +102,11 @@ export default function Register() {
                 company: empresa.trim(),
                 password,
             });
-            console.log("REGISTER SUCCESS RESULT", res);
-
-            Alert.alert("Registro Exitoso", "Tu cuenta ha sido creada correctamente.", [
-                { text: "OK", onPress: () => router.replace("/(auth)/login") }
+            // El registro ya devuelve un token y guarda la sesión: se entra directo al panel
+            Alert.alert("Registro exitoso", `Tu cuenta y la empresa "${res?.user?.company_name || empresa.trim() || 'tu empresa'}" fueron creadas.`, [
+                { text: "Continuar", onPress: () => router.replace("/(app)/(tabs)/dashboard") }
             ]);
         } catch (error: any) {
-            console.log("ERROR COMPLETO", JSON.stringify(error, null, 2));
             Alert.alert("Error de registro", error.message || "Hubo un problema al crear tu cuenta.");
         } finally {
             setLoading(false);
